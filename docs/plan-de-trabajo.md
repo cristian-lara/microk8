@@ -74,4 +74,13 @@ Objetivo: levantar la plataforma **sin port forwarding**; cada app con su **subd
 
 ---
 
+## 8. Tareas de prioridad baja / nice-to-have
+
+- [ ] Configurar acceso SSH a la VM por internet usando **Cloudflare Tunnel + Access** (sin port forwarding), con:
+  - Subdominio dedicado (ej. `ssh.cld-lf.com`).
+  - App de Access con MFA y allowlist muy restringida.
+  - Documentación de uso del cliente (cloudflared / profile SSH) para acceso remoto seguro.
+
+---
+
 _Referencia: `00-resumen.md`, `02-microk8s-bootstrap.md`, `03-cloudflare-tunnel-access-google-mfa.md`, `04-migrar-vault-subdominio.md`._
