@@ -1,0 +1,77 @@
+global:
+  enabled: true
+
+server:
+  # Modo standalone con storage RAFT interno (suficiente para single-node).
+  ha:
+    enabled: false
+
+  dataStorage:
+    enabled: true
+    storageClass: nfs-storage
+    accessMode: ReadWriteOnce
+    size: 10Gi
+
+  auditStorage:
+    enabled: true
+    storageClass: nfs-storage
+    accessMode: ReadWriteOnce
+    size: 5Gi
+
+  # No exponemos directamente como LoadBalancer/NodePort; se hará vía Ingress + Tunnel.
+  service:
+    enabled: true
+    type: ClusterIP
+    port: 8200
+
+  # Endurecimiento de seguridad de los pods (ver reglas k8s-yaml-prod.mdc).
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  securityContext:
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    privileged: false
+    capabilities:
+      drop:
+        - ALL
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+  # Probes básicas; ajustar paths según modo (standalone vs ha).
+  readinessProbe:
+    enabled: true
+    path: /v1/sys/health?standbyok=true
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+
+  livenessProbe:
+    enabled: true
+    path: /v1/sys/health?standbyok=true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 5
+
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
+
+  # No definimos secretos ni credenciales aquí; el bootstrap inicial se hará manualmente
+  # (init + unseal) y las policies/usuarios se gestionarán dentro de Vault.
+
+ui:
+  enabled: true
+  serviceType: ClusterIP
+

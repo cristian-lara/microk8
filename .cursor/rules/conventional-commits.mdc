@@ -1,0 +1,37 @@
+---
+description: Uso obligatorio de Conventional Commits en este repositorio
+alwaysApply: true
+---
+
+# Regla de commits – Conventional Commits
+
+En este repositorio **todos los mensajes de commit** deben seguir el formato de [Conventional Commits](https://www.conventionalcommits.org/):
+
+`<type>(<scope>): <short description>`
+
+## 1. Types permitidos (mínimo)
+
+- `feat`: nuevas funcionalidades.
+- `fix`: corrección de bugs.
+- `docs`: cambios solo en documentación.
+- `style`: cambios de formato que no afectan la lógica.
+- `refactor`: cambios internos sin cambiar comportamiento público.
+- `test`: añadir o modificar tests.
+- `chore`: tareas de mantenimiento (configuración, reglas, tooling, bootstrap, etc.).
+
+## 2. Reglas básicas
+
+- El mensaje debe estar **en minúsculas** en el `type`.
+- La descripción debe ser **breve y clara**, en tiempo presente:
+  - Ejemplo: `chore: bootstrap microk8 docs and rules`
+- Usar `scope` solo cuando aporte claridad:
+  - Ejemplo: `feat(vault): add helm values for prod`.
+
+## 3. Uso por herramientas (Cursor / Claude)
+
+- Cuando el agente cree commits automáticamente:
+  - Debe elegir un `type` adecuado (normalmente `chore`, `docs`, `feat`, `fix`).
+  - Evitar mensajes genéricos como `update` o `changes`.
+- Para este primer commit de bootstrap se recomienda:
+  - `chore: bootstrap microk8 docs and rules`
+
