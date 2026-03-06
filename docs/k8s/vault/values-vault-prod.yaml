@@ -47,22 +47,13 @@ server:
       cpu: "500m"
       memory: "1Gi"
 
-  # Probes básicas; ajustar paths según modo (standalone vs ha).
+  # Probes: deshabilitadas durante el bootstrap inicial (init + unseal) para evitar CrashLoop.
+  # Más adelante se pueden reactivar con path /v1/sys/health?standbyok=true&uninitcode=200.
   readinessProbe:
-    enabled: true
-    path: /v1/sys/health?standbyok=true&uninitcode=200
-    initialDelaySeconds: 10
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 5
+    enabled: false
 
   livenessProbe:
-    enabled: true
-    path: /v1/sys/health?standbyok=true&uninitcode=200
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 5
+    enabled: false
 
   podDisruptionBudget:
     enabled: true
