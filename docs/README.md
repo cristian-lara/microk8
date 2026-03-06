@@ -6,6 +6,17 @@ Esta carpeta contiene la documentación para levantar la plataforma en una VM Ub
 
 **[plan-de-trabajo.md](plan-de-trabajo.md)** – Checklist para ir marcando pasos (VM → MicroK8s → Tunnel → Access → subdominios).
 
+## Workflow (análisis y ejecución)
+
+Para levantar o modificar servicios de forma ordenada y validada, usar el sistema de **workflows** en **[../workflow/](../workflow/)**:
+
+- **Flujo de análisis** – Dependencias, orden, riesgos y estándares antes de implementar.
+- **Flujo de ejecución** – Pasos validados y **pull** tras cada step completado.
+- **Orquestador** – Valida tareas y mantiene la tabla de aprendizaje (`workflow/LEARNING.md`).
+- **Un directorio por servicio** en `workflow/services/<servicio>/` con pasos y criterios de éxito.
+
+La regla de Cursor `workflow-platform.mdc` aplica al trabajar en `workflow/` o en `docs/k8s/`.
+
 ## Orden recomendado
 1. `00-resumen.md`
 2. `01-vm-ubuntu24-synology-vmm.md`

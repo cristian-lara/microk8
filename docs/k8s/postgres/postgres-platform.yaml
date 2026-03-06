@@ -1,5 +1,6 @@
 # CloudNativePG Cluster for platform namespace - uses nfs-storage (Synology NFS).
-# Apply: kubectl apply -f postgres-platform.yaml (from this dir) or copy to VM and apply.
+# Apply: from repo root on VM: ./docs/k8s/postgres/apply-postgres-platform.sh
+# Compliant with .cursor/rules/k8s-yaml-prod.mdc (versioned image, resources, securityContext).
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
@@ -18,6 +19,21 @@ spec:
     limits:
       cpu: "1"
       memory: "2Gi"
+  # Pod security context (run as non-root; PostgreSQL image uses 26:26)
+  podSecurityContext:
+    runAsUser: 26
+    runAsGroup: 26
+    fsGroup: 26
+    runAsNonRoot: true
+  securityContext:
+    allowPrivilegeEscalation: false
+    privileged: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    capabilities:
+      drop:
+        - ALL
+      add: []  # add only if strictly needed
   bootstrap:
     initdb:
       database: platform

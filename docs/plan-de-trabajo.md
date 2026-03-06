@@ -84,6 +84,9 @@ Objetivo: levantar la plataforma **sin port forwarding**; cada app con su **subd
 - [ ] **Vault** desplegado y apuntando a storage NFS
   - Archivos: `docs/k8s/vault/values-vault-prod.yaml`, `docs/k8s/vault/apply-vault-platform.sh`
   - Ejecutar: `chmod +x docs/k8s/vault/apply-vault-platform.sh && ./docs/k8s/vault/apply-vault-platform.sh` (desde la raíz del repo)
+- [ ] **Vault vinculado a PostgreSQL** (motor database, credenciales dinámicas, rotación para Gitea/ArgoCD)
+  - Archivos: `docs/k8s/vault/vault-postgres-integration.md`, `docs/k8s/postgres/create-vault-db-user.sh`, `docs/k8s/postgres/grant-vault-to-gitea.sh`, `docs/k8s/vault/setup-database-engine.sh`
+  - Ejecutar: (1) `VAULT_DB_ADMIN_PASSWORD='...' ./docs/k8s/postgres/create-vault-db-user.sh` (2) Crear DB gitea si aplica y `./docs/k8s/postgres/grant-vault-to-gitea.sh` (3) Tras unseal Vault: `VAULT_ADDR=... VAULT_TOKEN=... VAULT_DB_ADMIN_PASSWORD=... ./docs/k8s/vault/setup-database-engine.sh`. Ver orden completo en `docs/k8s/vault/vault-postgres-integration.md`
 - [ ] **Gitea** desplegado
   - Archivos: `docs/k8s/gitea/values-gitea-prod.yaml`, `docs/k8s/gitea/apply-gitea-platform.sh`
   - Ejecutar: `chmod +x docs/k8s/gitea/apply-gitea-platform.sh && ./docs/k8s/gitea/apply-gitea-platform.sh` (desde la raíz del repo)
@@ -138,4 +141,4 @@ Objetivo: levantar la plataforma **sin port forwarding**; cada app con su **subd
 
 ---
 
-_Referencia: `00-resumen.md`, `02-microk8s-bootstrap.md`, `03-cloudflare-tunnel-access-google-mfa.md`, `04-migrar-vault-subdominio.md`._
+_Referencia: `00-resumen.md`, `02-microk8s-bootstrap.md`, `03-cloudflare-tunnel-access-google-mfa.md`, `04-migrar-vault-subdominio.md`. Para flujos de análisis y ejecución por servicio, ver `workflow/README.md`._

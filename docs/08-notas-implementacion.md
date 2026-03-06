@@ -126,6 +126,8 @@ Resumen de prioridades (detallado en `plan-de-trabajo.md`):
 8. CI/Registry (opcional).
 9. Apps de negocio a través de ArgoCD, con secretos desde Vault y exposición por Tunnel + Access.
 
+**Vault + PostgreSQL (credenciales dinámicas):** Tras tener PostgreSQL y Vault desplegados, se configura el motor de secretos **database** en Vault para que genere credenciales de PostgreSQL con rotación (TTL). Las apps (Gitea, ArgoCD, etc.) consumen `database/creds/gitea` (o el rol que corresponda) en lugar de un usuario fijo. Ver `docs/k8s/vault/vault-postgres-integration.md` y scripts: `create-vault-db-user.sh`, `grant-vault-to-gitea.sh`, `setup-database-engine.sh`.
+
 ---
 
 ## 8. Namespace `platform` – propósito
@@ -146,4 +148,19 @@ Este namespace se crea para que **cualquiera que despliegue la plataforma desde 
 Regla general para quien implemente desde cero:
 
 - **No desplegar aplicaciones de negocio en `platform`**; crear otros namespaces (`apps`, `n8n`, `prod-xxx`, etc.) y consumir la plataforma (Vault, PostgreSQL, etc.) desde ahí.
+
+---
+
+## 9. Workflow de análisis y ejecución
+
+Para levantar o modificar servicios de forma ordenada y validada existe el directorio **`workflow/`** en la raíz del repo:
+
+- **Análisis** (`workflow/analysis/`): dependencias, orden, riesgos y estándares antes de implementar.
+- **Ejecución** (`workflow/execution/`): pasos validados; tras cada step completado se hace **pull** (y commit).
+- **Orquestador** (`workflow/ORCHESTRATOR.md`): valida cada tarea y mantiene la tabla de aprendizaje en `workflow/LEARNING.md`.
+- **Un directorio por servicio** en `workflow/services/<servicio>/` con pasos y criterios de éxito (plantilla en `_template/`).
+
+**Skills** (`workflow/skills/`): el workflow puede desplegar **servicios de mercado** (PostgreSQL, Vault, Gitea, ArgoCD, Woodpecker, Harbor, etc.) y **servicios custom** (aplicaciones propias), con las mismas mejores prácticas. La **salida a internet es siempre HTTPS sin port forwarding** vía Cloudflare Tunnel + subdominio + (recomendado) Access; ver `workflow/skills/cloudflare-https-exposure.md` y `workflow/skills/service-catalog.md`.
+
+Cualquier IA o persona que trabaje en despliegues debe leer `docs/plan-de-trabajo.md` y `docs/08-notas-implementacion.md` y, si usa el workflow, seguir los flujos de análisis y ejecución y la regla de pull post-step.
 
