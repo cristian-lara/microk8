@@ -1,63 +1,219 @@
+# Gitea Helm Chart - Production Values
+# Chart: gitea-charts/gitea
+# Documentation: https://gitea.com/gitea/helm-chart
+#
+# This configuration:
+# - Disables internal PostgreSQL-HA and Valkey subcharts
+# - Uses external platform-db (CloudNativePG)
+# - Uses nfs-storage for persistence
+# - Configures ROOT_URL for Cloudflare Tunnel exposure
+
+# =============================================================================
+# DISABLE INTERNAL SUBCHARTS
+# =============================================================================
+# These must be at root level, not under 'gitea:'
+postgresql-ha:
+  enabled: false
+
+valkey-cluster:
+  enabled: false
+
+redis-cluster:
+  enabled: false
+
+# =============================================================================
+# GITEA CONFIGURATION
+# =============================================================================
+replicaCount: 1
+
+image:
+  registry: ""
+  repository: gitea/gitea
+  tag: "1.22.3"
+  pullPolicy: IfNotPresent
+  rootless: true
+
+# =============================================================================
+# SERVICE
+# =============================================================================
+service:
+  http:
+    type: ClusterIP
+    port: 3000
+  ssh:
+    type: ClusterIP
+    port: 22
+
+# =============================================================================
+# PERSISTENCE (NFS)
+# =============================================================================
+persistence:
+  enabled: true
+  create: true
+  mount: true
+  claimName: gitea
+  storageClass: nfs-storage
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  labels: {}
+  annotations: {}
+
+# =============================================================================
+# SECURITY CONTEXT
+# =============================================================================
+podSecurityContext:
+  fsGroup: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  privileged: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+
+# =============================================================================
+# RESOURCES
+# =============================================================================
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+# =============================================================================
+# GITEA APP CONFIGURATION (app.ini)
+# =============================================================================
 gitea:
-  replicaCount: 1
-
-  image:
-    repository: gitea/gitea
-    tag: 1.22.3
-    pullPolicy: IfNotPresent
-
-  service:
-    http:
-      type: ClusterIP
-      port: 3000
-    ssh:
-      type: ClusterIP
-      port: 22
-
-  persistence:
-    enabled: true
-    storageClass: nfs-storage
-    accessModes:
-      - ReadWriteOnce
-    size: 10Gi
-
-  securityContext:
-    runAsUser: 1000
-    runAsGroup: 1000
-    fsGroup: 1000
-    runAsNonRoot: true
-
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "256Mi"
-    limits:
-      cpu: "500m"
-      memory: "1Gi"
-
-  # Configuración principal de Gitea (app.ini generada por el chart)
-  config:
-    APP_NAME: "Gitea"
-    RUN_MODE: "prod"
-    server:
-      ROOT_URL: "https://gitea.cld-lf.com/"
-      DOMAIN: "gitea.cld-lf.com"
-      PROTOCOL: "http"
-      HTTP_PORT: 3000
-    database:
-      DB_TYPE: "postgres"
-      HOST: "platform-db-rw.platform.svc.cluster.local:5432"
-      NAME: "gitea"
-      USER: "gitea"
-      PASSWD: "dummy-temp"
-    security:
-      INSTALL_LOCK: "false"
-
-  # Admin inicial para instalación no interactiva (el init configure-gitea lo usa).
   admin:
-    existingSecret: ""
-    username: "gitea_admin"
-    password: "change-me-soon"
-    email: "gitea@gitea.local"
+    # Admin credentials loaded from pre-created secret
+    # Create before deploy: see workflow/services/gitea/steps.md Step 2
+    existingSecret: gitea-admin-secret
 
+  config:
+    APP_NAME: "Gitea - cld-lf"
+    RUN_MODE: "prod"
 
+    server:
+      DOMAIN: gitea.cld-lf.com
+      ROOT_URL: "https://gitea.cld-lf.com/"
+      PROTOCOL: http
+      HTTP_PORT: "3000"
+      SSH_DOMAIN: gitea.cld-lf.com
+      SSH_PORT: "22"
+      START_SSH_SERVER: "true"
+      LFS_START_SERVER: "true"
+
+    database:
+      DB_TYPE: postgres
+      HOST: platform-db-rw.platform.svc.cluster.local:5432
+      NAME: gitea
+      USER: gitea
+      # Password loaded from environment variable via existingSecret
+      # PASSWD is set via additionalConfigFromEnvs below
+
+    security:
+      INSTALL_LOCK: "true"
+      SECRET_KEY: ""
+      INTERNAL_TOKEN: ""
+
+    repository:
+      ROOT: /data/git/repositories
+      DEFAULT_BRANCH: main
+
+    session:
+      PROVIDER: memory
+
+    cache:
+      ADAPTER: memory
+
+    queue:
+      TYPE: level
+
+    log:
+      MODE: console
+      LEVEL: info
+
+    webhook:
+      ALLOWED_HOST_LIST: "*"
+
+    service:
+      DISABLE_REGISTRATION: "false"
+      REQUIRE_SIGNIN_VIEW: "false"
+      ENABLE_NOTIFY_MAIL: "false"
+
+  # Load database password from secret
+  additionalConfigFromEnvs:
+    - name: GITEA__DATABASE__PASSWD
+      valueFrom:
+        secretKeyRef:
+          name: gitea-db-secret
+          key: password
+
+# =============================================================================
+# INGRESS (optional, can also configure via separate manifest)
+# =============================================================================
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+  hosts:
+    - host: gitea.cld-lf.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # TLS is handled by Cloudflare Tunnel, not by the ingress
+
+# =============================================================================
+# PROBES (chart defaults are usually fine, but explicit for production)
+# =============================================================================
+livenessProbe:
+  enabled: true
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 200
+  periodSeconds: 10
+  timeoutSeconds: 1
+  successThreshold: 1
+  failureThreshold: 10
+
+readinessProbe:
+  enabled: true
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 1
+  successThreshold: 1
+  failureThreshold: 3
+
+startupProbe:
+  enabled: true
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 1
+  successThreshold: 1
+  failureThreshold: 60
+
+# =============================================================================
+# INIT CONTAINERS (disabled - we don't need gpg/ssh setup in this config)
+# =============================================================================
+signing:
+  enabled: false
+
+# =============================================================================
+# EXTRA (for debugging if needed)
+# =============================================================================
+extraVolumes: []
+extraVolumeMounts: []
+extraContainers: []
