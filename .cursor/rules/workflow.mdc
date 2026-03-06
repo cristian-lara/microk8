@@ -1,0 +1,45 @@
+---
+description: Respetar siempre el workflow de análisis, ejecución, auditor y orquestador
+alwaysApply: true
+---
+
+# Regla única: respetar siempre el workflow
+
+En este repositorio **todo trabajo** relacionado con levantar, modificar o validar servicios en MicroK8s debe seguir el **workflow** definido en la carpeta `workflow/`. Esta regla aplica siempre.
+
+## 1. Fuente de verdad
+
+- **Plan y contexto:** `docs/plan-de-trabajo.md` y `docs/08-notas-implementacion.md`. Leer antes de proponer o ejecutar pasos.
+- **Workflow:** `workflow/README.md` (visión general), `workflow/RULES.md` (reglas), `workflow/ORCHESTRATOR.md` (validación), `workflow/LEARNING.md` (errores comunes).
+
+## 2. Flujos obligatorios
+
+- **Antes de implementar un servicio:** seguir el flujo de **análisis** (`workflow/analysis/flow-analysis.md`): contexto, tipo (market/custom), si se expone, BDD/NFS/Vault si aplica, webhooks con subdominio cld-lf.com (nunca localhost), seguridad.
+- **Al implementar:** seguir el flujo de **ejecución** (`workflow/execution/flow-execution.md`): generar YAML → **ejecutar auditor** (`workflow/audit/checklist-production.md`) → si falla, iterar hasta que pase → presentar resumen al usuario → solo tras aceptar: commit + comando de validación + pull.
+- **Por servicio:** un directorio en `workflow/services/<servicio>/` con README, steps.md y (opcional) analysis.md. Usar `workflow/services/_template/` para nuevos servicios.
+
+## 3. Auditor antes del usuario
+
+- Antes de presentar el resumen al usuario, la configuración (manifests/values) debe **pasar el auditor** (`workflow/audit/`). El auditor comprueba: estándares de producción (imagen versionada, resources, probes, securityContext, secretos desde Vault) y **webhooks/URLs sin localhost** (siempre `https://<subdominio>.cld-lf.com`, dominio **cld-lf.com**). Si el auditor falla, corregir y re-ejecutar hasta que apruebe.
+
+## 4. Reglas de comportamiento
+
+- **Pull** al completar cada step validado (`workflow/RULES.md`).
+- **Commit del YAML** solo tras aceptación explícita del usuario; documentar el comando de validación en `workflow/services/<servicio>/steps.md`.
+- **Webhooks y URLs públicas:** investigar si la app tiene webhooks/callbacks; nunca `localhost` ni `127.0.0.1` en variables de entorno del deploy; siempre subdominio cld-lf.com (`workflow/skills/webhooks-and-public-urls.md`).
+- **Exposición externa:** HTTPS sin port forwarding vía Cloudflare Tunnel + subdominio + Access (`workflow/skills/cloudflare-https-exposure.md`).
+- **Skills** cuando apliquen: `workflow/skills/` (cloudflare-https-exposure, service-catalog, best-practices, webhooks-and-public-urls).
+
+## 5. Orquestador y aprendizaje
+
+- El orquestador (`workflow/ORCHESTRATOR.md`) valida cada tarea según sus criterios; no marcar completado hasta cumplirlos.
+- Errores reutilizables se anotan en `workflow/LEARNING.md`.
+
+## 6. Documentación y commits
+
+- Tras cambios de infraestructura o seguridad: actualizar `docs/plan-de-trabajo.md` y, si aplica, `docs/08-notas-implementacion.md`.
+- Mensajes de commit en Conventional Commits (minúsculas en type, descripción breve en presente).
+
+---
+
+**Resumen:** Cualquier agente o persona que trabaje en este repo debe respetar el workflow (análisis → auditor → ejecución → validación orquestador → pull/commit según RULES). La documentación del workflow en `workflow/` es la referencia; no saltarse pasos ni presentar al usuario sin haber pasado el auditor.

@@ -80,8 +80,8 @@ Objetivo: levantar la plataforma **sin port forwarding**; cada app con su **subd
   - Archivos: `docs/k8s/scripts/create-namespace-platform.sh` (opcional)
   - Ejecutar: `microk8s kubectl create namespace platform`
 - [ ] **Operador CloudNativePG** instalado (requerido antes de desplegar PostgreSQL)
-  - Archivos: (documentado en `docs/08-notas-implementacion.md` §9)
-  - Ejecutar (en la VM, **recomendado Helm**): `microk8s helm3 repo add cnpg https://cloudnative-pg.github.io/charts && microk8s helm3 repo update && microk8s helm3 install cnpg cnpg/cloudnative-pg -n cnpg-system --create-namespace`. Verificación: `microk8s kubectl get pods -n cnpg-system`
+  - Archivos: `docs/k8s/postgres/install-cnpg-operator.sh` (documentado en `docs/08-notas-implementacion.md` §9)
+  - Ejecutar (en la VM, desde raíz del repo): `chmod +x docs/k8s/postgres/install-cnpg-operator.sh && ./docs/k8s/postgres/install-cnpg-operator.sh`. Verificación: `microk8s kubectl get pods -n cnpg-system`
 - [ ] **PostgreSQL** (CloudNativePG) usando `nfs-storage`
   - Archivos: `docs/k8s/postgres/postgres-platform.yaml`, `docs/k8s/postgres/apply-postgres-platform.sh`, `docs/k8s/postgres/create-gitea-db.sh` (opcional, para crear DB Gitea)
   - Ejecutar: `chmod +x docs/k8s/postgres/apply-postgres-platform.sh && ./docs/k8s/postgres/apply-postgres-platform.sh` (desde la raíz del repo). Luego, si vas a desplegar Gitea: `GITEA_DB_PASSWORD='...' chmod +x docs/k8s/postgres/create-gitea-db.sh && ./docs/k8s/postgres/create-gitea-db.sh`
