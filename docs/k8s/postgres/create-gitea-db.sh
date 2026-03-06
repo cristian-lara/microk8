@@ -20,10 +20,17 @@ if [ -z "$POD" ]; then
 fi
 
 echo "Creating database and user gitea on $POD..."
-microk8s kubectl exec -n platform "$POD" -c postgres -- psql -U postgres -v ON_ERROR_STOP=1 -c "
-CREATE USER gitea WITH PASSWORD '$GITEA_PASS';
-CREATE DATABASE gitea OWNER gitea;
-GRANT ALL PRIVILEGES ON DATABASE gitea TO gitea;
-"
-echo "Done. Use this connection from Gitea: host=platform-db-rw.platform.svc.cluster.local port=5432 dbname=gitea user=gitea"
-echo "Store the password in Vault or a Kubernetes Secret; do not put it in values files."
+# CREATE DATABASE no puede ejecutarse dentro de un bloque de transacción,
+# por eso separamos en varias llamadas a psql.
+microk8s kubectl exec -n platform "$POD" -c postgres -- \
+  psql -U postgres -v ON_ERROR_STOP=1 -c "CREATE USER gitea WITH PASSWORD '$GITEA_PASS';"
+
+microk8s kubectl exec -n platform "$POD" -c postgres -- \
+  psql -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE gitea OWNER gitea;"
+
+microk8s kubectl exec -n platform "$POD" -c postgres -- \
+  psql -U postgres -v ON_ERROR_STOP=1 -c "GRANT ALL PRIVILEGES ON DATABASE gitea TO gitea;"
+
+echo "Done. Use this connection from Gitea (if you ever need static creds):"
+echo "  host=platform-db-rw.platform.svc.cluster.local port=5432 dbname=gitea user=gitea"
+echo "For producción, preferir credenciales dinámicas de Vault (database/creds/gitea)."

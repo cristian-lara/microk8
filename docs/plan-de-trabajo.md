@@ -82,10 +82,10 @@ Objetivo: levantar la plataforma **sin port forwarding**; cada app con su **subd
 - [x] **Operador CloudNativePG** instalado (requerido antes de desplegar PostgreSQL)
   - Archivos: `docs/k8s/postgres/install-cnpg-operator.sh` (documentado en `docs/08-notas-implementacion.md` §9)
   - Ejecutar (en la VM, desde raíz del repo): `chmod +x docs/k8s/postgres/install-cnpg-operator.sh && ./docs/k8s/postgres/install-cnpg-operator.sh`. Verificación: `microk8s kubectl get pods -n cnpg-system`
-- [ ] **PostgreSQL** (CloudNativePG) usando `nfs-storage`
+- [x] **PostgreSQL** (CloudNativePG) usando `nfs-storage`
   - Archivos: `docs/k8s/postgres/postgres-platform.yaml`, `docs/k8s/postgres/apply-postgres-platform.sh`, `docs/k8s/postgres/create-gitea-db.sh` (opcional, para crear DB Gitea)
   - Ejecutar: `chmod +x docs/k8s/postgres/apply-postgres-platform.sh && ./docs/k8s/postgres/apply-postgres-platform.sh` (desde la raíz del repo). Luego, si vas a desplegar Gitea: `GITEA_DB_PASSWORD='...' chmod +x docs/k8s/postgres/create-gitea-db.sh && ./docs/k8s/postgres/create-gitea-db.sh`
-- [ ] **Vault** desplegado y apuntando a storage NFS
+- [x] **Vault** desplegado y apuntando a storage NFS
   - Archivos: `docs/k8s/vault/values-vault-prod.yaml`, `docs/k8s/vault/apply-vault-platform.sh`
   - Ejecutar: `chmod +x docs/k8s/vault/apply-vault-platform.sh && ./docs/k8s/vault/apply-vault-platform.sh` (desde la raíz del repo)
 - [ ] **Vault vinculado a PostgreSQL** (motor database, credenciales dinámicas, rotación para Gitea/ArgoCD)
