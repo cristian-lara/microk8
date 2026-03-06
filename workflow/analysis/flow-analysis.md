@@ -33,13 +33,13 @@ Seguir estos pasos **en orden**. Cada fase debe ser validada por el orquestador 
 
 ## Fase 1: Dependencias y orden
 
-5. **Listar dependencias**
-   - Infra: MicroK8s, DNS, Ingress, Helm, StorageClass (nfs-storage).
-   - Servicios: namespace `platform`, PostgreSQL, Vault, etc.
+6. **Listar dependencias**
+   - Infra: MicroK8s, DNS, Ingress (vía Helm, no addon), Helm, StorageClass (nfs-storage).
+   - Servicios: namespace `platform`, operador CloudNativePG (si aplica), PostgreSQL, Vault, etc.
    - Externos: Cloudflare Tunnel, Access, DNS (subdominio).
 
-4. **Orden en el plan**
-   - Comprobar orden recomendado en `docs/08-notas-implementacion.md` §7 y en `docs/plan-de-trabajo.md`.
+7. **Orden en el plan**
+   - Comprobar orden en `docs/08-notas-implementacion.md` §7 y `docs/plan-de-trabajo.md` (operador CNPG → PostgreSQL → Vault → Vault+DB → Gitea → ArgoCD).
    - Anotar: “Este servicio se despliega después de X y antes de Y”.
 
 **Criterio orquestador**: Dependencias explícitas y orden coherente con el plan.
@@ -48,18 +48,18 @@ Seguir estos pasos **en orden**. Cada fase debe ser validada por el orquestador 
 
 ## Fase 1b: Requisitos de persistencia y secretos (solo si aplica)
 
-7. **¿Necesita base de datos (BDD)?**
+8. **¿Necesita base de datos (BDD)?**
    - Si el servicio consume PostgreSQL (u otra BDD): indicar qué base de datos, usuario y si usará credenciales estáticas o dinámicas desde Vault (motor database).
    - Documentar en `workflow/services/<servicio>/analysis.md` y en los pasos de ejecución (ej. crear DB, crear usuario, grant).
 
-8. **¿Necesita NFS (volumen persistente)?**
+9. **¿Necesita NFS (volumen persistente)?**
    - Si el servicio requiere almacenamiento persistente (datos, backups, uploads): indicar StorageClass `nfs-storage`, tamaño y path/mount si aplica.
    - Si no requiere volumen, dejarlo explícito ("no requiere NFS").
 
-9. **¿Necesita ambas (BDD y NFS)?**
+10. **¿Necesita ambas (BDD y NFS)?**
    - Si aplica: documentar ambos (ej. Gitea: DB en PostgreSQL + volumen para repos y datos).
 
-10. **¿Requiere crear clave o secreto en Vault?**
+11. **¿Requiere crear clave o secreto en Vault?**
    - Si el servicio necesita credenciales (DB, API keys, certificados): indicar que se debe crear el secreto en Vault y cómo lo consumirá el servicio (ExternalSecret, Vault Agent, variable de entorno desde Secret sincronizado).
    - Si no usa secretos externos, dejarlo explícito ("no requiere Vault para este servicio").
 
@@ -69,16 +69,16 @@ Seguir estos pasos **en orden**. Cada fase debe ser validada por el orquestador 
 
 ## Fase 2: Requisitos de seguridad y estándares
 
-11. **Namespace**
+12. **Namespace**
    - ¿Plataforma → `platform` o app de negocio → otro namespace? (Regla: no apps de negocio en `platform`.)
 
-12. **Secretos**
+13. **Secretos**
     - ¿Credenciales necesarias? Deben venir de Vault (ExternalSecret/SecretStore); nada en claro en YAML. (Coherente con Fase 1b punto 8.)
 
-13. **Estándares YAML**
+14. **Estándares YAML**
     - Imagen versionada (no `:latest`), resources (requests/limits), liveness/readiness (y startup si aplica), securityContext según `.cursor/rules/k8s-yaml-prod.mdc`.
 
-14. **Red y exposición**
+15. **Red y exposición**
     - ClusterIP por defecto. Si el servicio se expone (Fase 0 punto 4): Ingress + Cloudflare Tunnel (Public Hostname) + DNS + Access; URLs/callbacks con dominio real (*.cld-lf.com), no localhost. Ver `workflow/skills/cloudflare-https-exposure.md`.
 
 **Criterio orquestador**: Checklist de seguridad y estándares alineado con las reglas del repo.
@@ -87,10 +87,10 @@ Seguir estos pasos **en orden**. Cada fase debe ser validada por el orquestador 
 
 ## Fase 3: Riesgos y excepciones
 
-15. **Riesgos**
+16. **Riesgos**
     - Ej: dependencia de NFS, orden Vault/PostgreSQL, propagación DNS.
 
-16. **Excepciones**
+17. **Excepciones**
     - Si alguna regla no se puede cumplir, documentar motivo, riesgo y mitigación (como en k8s-yaml-prod §10).
 
 **Criterio orquestador**: Riesgos identificados y excepciones documentadas.
@@ -99,13 +99,13 @@ Seguir estos pasos **en orden**. Cada fase debe ser validada por el orquestador 
 
 ## Fase 4: Entregables para ejecución
 
-17. **Resumen para el flujo de ejecución**
+18. **Resumen para el flujo de ejecución**
     - Lista de pasos concretos (scripts a ejecutar, manifests a aplicar, orden).
     - Archivos a crear o modificar (paths).
     - Criterios de éxito por paso (para el orquestador).
     - Resumen de requisitos BDD/NFS/Vault (de Fase 1b) para que ejecución los implemente.
 
-18. **Actualizar documentación si aplica**
+19. **Actualizar documentación si aplica**
     - Si el análisis revela cambios en el plan o en las notas, proponer actualización de `docs/plan-de-trabajo.md` o `docs/08-notas-implementacion.md`.
 
 **Criterio orquestador**: El flujo de ejecución puede seguir el resumen sin ambigüedad; documentación coherente.

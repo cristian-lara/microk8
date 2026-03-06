@@ -78,9 +78,9 @@ Antes de analizar o ejecutar un servicio, conviene cargar los skills que aplique
 ## Referencias obligatorias
 
 - [Plan de trabajo](../docs/plan-de-trabajo.md) – checklist y orden de despliegue.
-- [Notas de implementación](../docs/08-notas-implementacion.md) – gotchas y decisiones.
-- [Reglas YAML productivo](../.cursor/rules/k8s-yaml-prod.mdc) – seguridad y estándares de manifests.
-- [Disciplina de documentación](../.cursor/rules/documentation-discipline.mdc) – actualizar docs y plan.
+- [Notas de implementación](../docs/08-notas-implementacion.md) – gotchas, orden de instalación (§7) y decisiones.
+- Estándares de producción (YAML, secretos, probes, securityContext): [workflow/audit/checklist-production.md](audit/checklist-production.md) y [workflow/skills/best-practices.md](skills/best-practices.md).
+- Documentación: tras cambios de infra o seguridad, actualizar `docs/plan-de-trabajo.md` y `docs/08-notas-implementacion.md` (ver `workflow/RULES.md` §7).
 
 ## Roles expertos
 
@@ -89,3 +89,7 @@ Antes de analizar o ejecutar un servicio, conviene cargar los skills que aplique
 - **Orquestador**: validación de tareas, tabla de aprendizaje, delegación y criterios de “completado”.
 
 Todos los workflows deben aplicarse considerando un **entorno homelab seguro/productivo**: sin `:latest`, con recursos y probes, securityContext endurecido y secretos desde Vault.
+
+## Validación de coherencia (arquitecto DevOps)
+
+Para comprobar que el workflow no tiene conflictos con el plan y permite crear servicios de forma profesional: **[workflow/VALIDATION.md](VALIDATION.md)** – orden de dependencias, flujo end-to-end, referencias unificadas, Ingress/Helm, webhooks y checklist para nuevos servicios.

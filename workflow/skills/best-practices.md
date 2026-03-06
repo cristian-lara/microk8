@@ -32,10 +32,11 @@ Checklist de mejores prácticas que aplican a **todos** los servicios (market y 
 - Timeouts y períodos razonables para evitar reinicios en bucle.
 - Para servicios críticos: **PodDisruptionBudget**.
 
-## 5. Red
+## 5. Red e Ingress
 
 - **Service** tipo **ClusterIP** por defecto.
-- Evitar NodePort en producción; exponer vía **Ingress + Cloudflare Tunnel**.
+- **Ingress controller:** instalar vía **Helm** (chart ingress-nginx), no con el addon de MicroK8s. Permite versionado, recursos y mejores prácticas; ver `docs/02-microk8s-bootstrap.md` y `docs/08-notas-implementacion.md`.
+- Evitar NodePort en producción para apps; exponer vía **Ingress + Cloudflare Tunnel** (el controller puede usar NodePort solo para el puerto 80/443 si hace falta para el túnel).
 - **NetworkPolicy** con default deny y reglas mínimas necesarias.
 
 ## 6. Secretos y configuración

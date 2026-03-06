@@ -51,6 +51,15 @@ Decisión: **toda la plataforma** (PostgreSQL, Vault, etc.) usa `nfs-storage` co
 
 ---
 
+## 3b. Ingress: Helm en lugar del addon
+
+- **No usar** el addon de MicroK8s (`microk8s enable ingress`) para el controlador Ingress. En pruebas puede sugerirse otro addon o comportamientos distintos; para homogeneidad y mejores prácticas se instala el controlador **vía Helm** (chart `ingress-nginx`).
+- **Ventajas:** versionado claro, valores configurables (recursos, imagen fija), alineado con el resto de la plataforma (Helm). Evita depender del addon de MicroK8s y sus posibles cambios.
+- **Pasos:** ver `docs/02-microk8s-bootstrap.md` sección "Ingress vía Helm". Namespace recomendado: `ingress-nginx`. Para Cloudflare Tunnel, el Public Hostname apunta al puerto donde escucha el controller (ej. NodePort 80 o el Service del controller).
+- **Mejores prácticas:** imagen versionada (no `:latest`), `resources.requests`/`limits` en el controller, y revisar anotaciones si se usa cert-manager o TLS.
+
+---
+
 ## 4. Cloudflare Tunnel + Access – problemas típicos
 
 ### 4.1. Túnel y servicio `cloudflared`
@@ -114,17 +123,19 @@ Las reglas completas están en `.cursor/rules/k8s-yaml-prod.mdc`. Puntos clave:
 
 ## 7. Orden de instalación de plataforma (prioridad por seguridad)
 
-Resumen de prioridades (detallado en `plan-de-trabajo.md`):
+Resumen de prioridades (detallado en `plan-de-trabajo.md`). **Orden estricto** para evitar dependencias rotas:
 
-1. VM + MicroK8s + `nfs-storage`.
+1. VM + MicroK8s + DNS + **Helm** + **Ingress vía Helm** (ingress-nginx) + `nfs-storage`.
 2. Cloudflare Tunnel + Access (piloto `test.cld-lf.com`).
 3. Namespace `platform`.
-4. Vault (secrets) usando PVC en `nfs-storage`.
-5. PostgreSQL (CloudNativePG) para la plataforma.
-6. Gitea (código) → usa PostgreSQL.
-7. ArgoCD (GitOps) → se integra con Gitea.
-8. CI/Registry (opcional).
-9. Apps de negocio a través de ArgoCD, con secretos desde Vault y exposición por Tunnel + Access.
+4. **Operador CloudNativePG** (Helm en `cnpg-system`); ver §9.
+5. **PostgreSQL** (CloudNativePG) usando `nfs-storage`; esperar pods Running.
+6. **Vault** (secrets) usando PVC en `nfs-storage`; init y unseal.
+7. **Vault vinculado a PostgreSQL** (motor database, credenciales dinámicas); ver `docs/k8s/vault/vault-postgres-integration.md`.
+8. Gitea (código) → usa PostgreSQL y puede usar credenciales dinámicas de Vault.
+9. ArgoCD (GitOps) → se integra con Gitea.
+10. CI/Registry (opcional).
+11. Apps de negocio en namespaces propios, con secretos desde Vault y exposición por Tunnel + Access.
 
 **Vault + PostgreSQL (credenciales dinámicas):** Tras tener PostgreSQL y Vault desplegados, se configura el motor de secretos **database** en Vault para que genere credenciales de PostgreSQL con rotación (TTL). Las apps (Gitea, ArgoCD, etc.) consumen `database/creds/gitea` (o el rol que corresponda) en lugar de un usuario fijo. Ver `docs/k8s/vault/vault-postgres-integration.md` y scripts: `create-vault-db-user.sh`, `grant-vault-to-gitea.sh`, `setup-database-engine.sh`.
 
@@ -151,7 +162,78 @@ Regla general para quien implemente desde cero:
 
 ---
 
-## 9. Workflow de análisis y ejecución
+## 9. Operador CloudNativePG (antes de PostgreSQL)
+
+Para que el manifest `postgres-platform.yaml` (Cluster CRD) funcione, el **operador CloudNativePG** debe estar instalado.
+
+### Recomendado: instalar con Helm
+
+Usar **Helm** evita conflictos con addons de MicroK8s, permite fijar versión del operador y es el mismo método para el resto de la plataforma (Vault, Gitea, ArgoCD suelen ir por Helm). En la VM, con MicroK8s ya con `helm3` habilitado:
+
+```bash
+microk8s helm3 repo add cnpg https://cloudnative-pg.github.io/charts
+microk8s helm3 repo update
+microk8s helm3 install cnpg cnpg/cloudnative-pg -n cnpg-system --create-namespace
+```
+
+Verificación: `microk8s kubectl get pods -n cnpg-system` (pods del operador en Running).
+
+Referencia: [CloudNativePG Helm chart](https://cloudnative-pg.github.io/charts).
+
+### Alternativa: addon de MicroK8s
+
+Si prefieres el addon:
+
+1. Si aparece **"Addon cloudnative-pg was not found"**, habilitar primero: `microk8s enable community`
+2. Luego: `microk8s enable cloudnative-pg`
+
+**Problema conocido:** si CloudNativePG ya estaba instalado con Helm, el addon puede fallar con *"Apply failed with conflicts: conflicts with helm"*. En ese caso se recomienda **usar solo Helm** (no mezclar addon y Helm para el mismo operador).
+
+### Orden
+
+Instalar el operador (Helm o addon) **antes** de ejecutar `./docs/k8s/postgres/apply-postgres-platform.sh`.
+
+---
+
+## 10. Redeploy, persistencia de datos y arranque tras apagado
+
+Para que **no se pierdan datos**, que el **redeploy** (volver a ejecutar apply/Helm) sea seguro y que tras **apagar** la VM o el cluster todo **levante normalmente**, se cumple lo siguiente.
+
+### Persistencia (datos en NFS)
+
+- **Toda la plataforma con estado** usa **PVCs** con StorageClass **`nfs-storage`** (NFS en Synology). Los datos quedan en el NAS, no en el disco de la VM.
+- **PostgreSQL** (CloudNativePG): datos del cluster en PVC; el nombre del PVC es estable (p. ej. vinculado al nombre del Cluster). Al hacer redeploy del manifest o del operador, **no se borran** los PVCs existentes salvo que se eliminen a mano.
+- **Vault**: storage en PVC (`nfs-storage`); datos de Vault (incl. sealed state) en el NAS.
+- **Gitea** (y similares): repos y datos en PVCs con `nfs-storage`.
+
+**Regla:** No eliminar namespaces con PVCs ni borrar PVCs a mano si se quiere conservar datos. Los scripts de apply (`apply-postgres-platform.sh`, `apply-vault-platform.sh`, etc.) hacen `kubectl apply` / `helm upgrade`; **no** eliminan PVCs.
+
+### Redeploy seguro
+
+- **Re-ejecutar** los scripts de apply (p. ej. `./docs/k8s/postgres/apply-postgres-platform.sh`, `./docs/k8s/vault/apply-vault-platform.sh`) o `helm upgrade` es **seguro**: actualiza manifiestos o releases sin borrar los PVCs. Los pods pueden reiniciarse y volver a montar los mismos volúmenes; los datos siguen en NFS.
+- **Importante:** No usar `helm uninstall` ni `kubectl delete` sobre los recursos que tienen PVCs con datos que quieras conservar. Para “redeploy” se usa **apply** o **upgrade**, no uninstall + install.
+
+### Arranque tras apagado (VM o cluster parado)
+
+1. **VM / nodo:** Arrancar la VM (o el NAS si afecta al NFS). Si el servicio NFS está en el NAS, el NAS debe estar encendido antes o al mismo tiempo que la VM para que los montajes NFS respondan.
+2. **MicroK8s:** `microk8s status --wait-ready` (o dejar que arranque solo). Los pods irán pasando a Running.
+3. **PVCs:** Siguen en Bound; los pods que usan `nfs-storage` vuelven a montar los mismos volúmenes; **no se pierden datos**.
+4. **PostgreSQL:** CloudNativePG arranca y usa los PVCs existentes; la base de datos se levanta con los datos intactos.
+5. **Vault:** Los datos están en el PVC, pero tras un reinicio Vault suele quedar **sealed**. Hay que **unseal** manualmente (o con auto-unseal si está configurado). Sin unseal, las apps que dependen de Vault no podrán leer secretos hasta que se haga unseal.
+6. **Gitea y resto:** Arrancan y montan sus PVCs; datos intactos.
+
+**Resumen:** Los datos persisten en NFS. Redeploy con apply/upgrade es seguro. Tras apagar, todo levanta normal salvo **Vault**, que puede requerir **unseal** después del reinicio (documentar en runbook si se usa unseal manual).
+
+### Checklist rápido
+
+- [ ] StorageClass por defecto es `nfs-storage` (datos en NAS).
+- [ ] No eliminar PVCs ni namespaces con datos sin backup.
+- [ ] Redeploy = apply/helm upgrade, no uninstall.
+- [ ] Tras reboot: comprobar pods Running; si usas Vault, ejecutar unseal si está sealed.
+
+---
+
+## 11. Workflow de análisis y ejecución
 
 Para levantar o modificar servicios de forma ordenada y validada existe el directorio **`workflow/`** en la raíz del repo:
 

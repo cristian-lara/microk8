@@ -30,7 +30,7 @@ Todos los servicios que deban ser accesibles desde internet en este proyecto se 
   - **URL**: apuntar al **Ingress** o al nodo donde el Ingress escucha. Típicamente: `http://<ingress-controller-service>.<namespace>.svc.cluster.local` o la IP:puerto del Ingress (ej. `http://10.152.183.x:80` si el Ingress está en el cluster). En MicroK8s con addon Ingress suele ser `http://localhost:80` desde el host del túnel, o la IP del nodo y puerto 80.
 - Guardar.
 
-**Nota:** Si `cloudflared` corre en la VM y el Ingress está en la misma VM, la URL suele ser `http://127.0.0.1:80` o `http://<node-ip>:80` (puerto del Ingress).
+**Nota:** Si `cloudflared` corre en la VM y el Ingress está en la misma VM, la URL suele ser `http://127.0.0.1:80` o `http://<node-ip>:80` (puerto del Ingress). En este proyecto el controlador Ingress se instala **vía Helm** (ingress-nginx), no con el addon de MicroK8s; ver `docs/02-microk8s-bootstrap.md` y `docs/08-notas-implementacion.md` §Ingress.
 
 **Criterio:** En la configuración del túnel aparece el Public Hostname para ese subdominio.
 

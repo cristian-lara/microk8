@@ -15,7 +15,7 @@ El orquestador es el rol que **coordina** los flujos de análisis y ejecución, 
 |----------------------|--------------------------------------|
 | YAML del servicio    | **Auditor** ha pasado (checklist producción, incl. webhooks/URLs sin localhost); luego resumen presentado al usuario; usuario **acepta**; entonces commit; comando de validación en `workflow/services/<servicio>/steps.md`. Si el auditor falla, iterar (corregir y re-auditar) antes de presentar al usuario. |
 | Script de apply      | Script ejecutado sin error; recursos creados/actualizados (e.g. `kubectl get` muestra lo esperado). |
-| Manifest/Helm        | YAML cumple reglas de `.cursor/rules/k8s-yaml-prod.mdc`; sin `:latest`; recursos, probes y securityContext definidos. |
+| Manifest/Helm        | YAML cumple checklist de producción (`workflow/audit/checklist-production.md`): sin `:latest`; recursos, probes y securityContext definidos. |
 | Documentación        | `docs/plan-de-trabajo.md` o `08-notas-implementacion.md` actualizados según la regla de documentación. |
 | Paso de análisis     | Dependencias, orden, requisitos BDD/NFS/Vault (si aplica) y riesgos documentados; bloque listo para ejecución. |
 | Servicio desplegado  | Pods `Running`, PVCs (si aplica) bound; comando de validación ejecutado con éxito. |
@@ -43,11 +43,10 @@ No hace falta anotar cada fallo puntual; priorizar los que ayuden a no repetir e
 ## Referencias que el orquestador debe conocer
 
 - `docs/plan-de-trabajo.md` – orden y checks del plan.
-- `docs/08-notas-implementacion.md` – gotchas y decisiones.
-- `.cursor/rules/k8s-yaml-prod.mdc` – reglas de manifests productivos.
-- `.cursor/rules/documentation-discipline.mdc` – actualización de docs.
-- `workflow/RULES.md` – pull post-step, prompting, iterativo, auditor.
-- `workflow/audit/checklist-production.md` – checklist del auditor.
+- `docs/08-notas-implementacion.md` – gotchas, orden de instalación (§7) y decisiones.
+- `workflow/audit/checklist-production.md` – estándares de producción (YAML, secretos, webhooks).
+- `workflow/skills/best-practices.md` – mejores prácticas consolidadas.
+- `workflow/RULES.md` – pull post-step, prompting, iterativo, auditor, documentación (§7).
 - `workflow/skills/webhooks-and-public-urls.md` – dominio cld-lf.com, nunca localhost en webhooks/URLs.
 
 ## Auditor (agente/workflow)

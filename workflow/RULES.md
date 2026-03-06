@@ -43,7 +43,7 @@ Reglas que aplican a todos los flujos (análisis y ejecución) y a la actuación
 ## 5. Seguridad y entorno productivo
 
 - Todos los pasos deben respetar:
-  - `.cursor/rules/k8s-yaml-prod.mdc` (imágenes versionadas, recursos, probes, securityContext, secretos desde Vault).
+  - Checklist de producción (`workflow/audit/checklist-production.md`) y mejores prácticas (`workflow/skills/best-practices.md`): imágenes versionadas, recursos, probes, securityContext, secretos desde Vault.
   - Ninguna credencial en claro en manifests ni en `values.yaml` de producción.
   - Clasificación correcta namespace: `platform` para componentes de plataforma; apps de negocio en otros namespaces.
   - **Webhooks y URLs públicas**: investigar si la app tiene webhooks/callbacks; nunca `localhost` ni `127.0.0.1` en variables de entorno del deploy; siempre `https://<subdominio>.cld-lf.com` (dominio **cld-lf.com**). Ver `workflow/skills/webhooks-and-public-urls.md`.

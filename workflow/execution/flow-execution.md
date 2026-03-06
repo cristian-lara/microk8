@@ -48,7 +48,7 @@ Para **cada** paso de implementación (cada script, cada apply, cada bloque lóg
 ### 2. Comprobar resultado
 
 - Comprobar que el recurso existe y está en el estado esperado (ej. `microk8s kubectl get pods -n platform`, `kubectl get pvc -n platform`).
-- Revisar que los manifests/values cumplan las reglas de `.cursor/rules/k8s-yaml-prod.mdc` (imagen versionada, resources, probes, securityContext, sin secretos en claro).
+- Revisar que los manifests/values cumplan el checklist de producción (`workflow/audit/checklist-production.md`): imagen versionada, resources, probes, securityContext, sin secretos en claro.
 
 ### 3. Validación por el orquestador
 
@@ -101,3 +101,10 @@ Documentar en `docs/06-subdominios-hostnames.md` (o equivalente) el mapping host
 - Actualizar **docs/plan-de-trabajo.md**: marcar checks correspondientes.
 - Actualizar **docs/08-notas-implementacion.md** si hubo problemas o decisiones nuevas.
 - Si aparece un error reusable, el orquestador debe añadirlo a **workflow/LEARNING.md**.
+
+---
+
+## Redeploy y persistencia
+
+- **Redeploy** (volver a ejecutar los scripts de apply o `helm upgrade`) es **seguro**: los datos están en **PVCs con nfs-storage** (NFS); no se borran al re-aplicar. No usar `helm uninstall` ni eliminar PVCs/namespaces con datos sin backup.
+- **Tras apagar la VM o el cluster:** al arrancar, los pods vuelven a montar los mismos PVCs; los datos persisten. **Vault** puede quedar sealed y requerir **unseal** tras un reboot. Ver `docs/08-notas-implementacion.md` §10.

@@ -31,10 +31,11 @@ Objetivo: levantar la plataforma **sin port forwarding**; cada app con su **subd
   - Ejecutar: `microk8s status --wait-ready`
 - [x] Addon DNS: `microk8s enable dns`
   - Ejecutar: `microk8s enable dns`
-- [x] Addon Ingress: `microk8s enable ingress`
-  - Ejecutar: `microk8s enable ingress`
 - [x] Addon Helm: `microk8s enable helm3`
-  - Ejecutar: `microk8s enable helm3`
+  - Ejecutar: `microk8s enable helm3` (requerido antes de instalar Ingress u otros charts).
+- [x] Ingress instalado vía Helm (ingress-nginx), no addon
+  - Archivos: ver `docs/02-microk8s-bootstrap.md` (sección Ingress vía Helm) y `docs/08-notas-implementacion.md` §3b.
+  - Ejecutar: añadir repo Helm `ingress-nginx`, instalar chart en namespace `ingress-nginx` con valores según mejores prácticas (imagen versionada, resources). No usar `microk8s enable ingress`.
 - [x] Storage configurado: `nfs-storage` (NFS Synology) como StorageClass por defecto; `hostpath-storage` deshabilitado
   - Archivos: `docs/k8s/scripts/setup-nfs-storage.sh` (opcional) o ver `08-notas-implementacion.md`
   - Ejecutar: (Helm install nfs-subdir-external-provisioner; ver notas)
@@ -78,6 +79,9 @@ Objetivo: levantar la plataforma **sin port forwarding**; cada app con su **subd
 - [x] Namespace de plataforma creado (ej. `platform` o similar) para aislar los componentes de plataforma (Vault, PostgreSQL, Gitea, ArgoCD, etc.) del resto de namespaces
   - Archivos: `docs/k8s/scripts/create-namespace-platform.sh` (opcional)
   - Ejecutar: `microk8s kubectl create namespace platform`
+- [ ] **Operador CloudNativePG** instalado (requerido antes de desplegar PostgreSQL)
+  - Archivos: (documentado en `docs/08-notas-implementacion.md` §9)
+  - Ejecutar (en la VM, **recomendado Helm**): `microk8s helm3 repo add cnpg https://cloudnative-pg.github.io/charts && microk8s helm3 repo update && microk8s helm3 install cnpg cnpg/cloudnative-pg -n cnpg-system --create-namespace`. Verificación: `microk8s kubectl get pods -n cnpg-system`
 - [ ] **PostgreSQL** (CloudNativePG) usando `nfs-storage`
   - Archivos: `docs/k8s/postgres/postgres-platform.yaml`, `docs/k8s/postgres/apply-postgres-platform.sh`, `docs/k8s/postgres/create-gitea-db.sh` (opcional, para crear DB Gitea)
   - Ejecutar: `chmod +x docs/k8s/postgres/apply-postgres-platform.sh && ./docs/k8s/postgres/apply-postgres-platform.sh` (desde la raíz del repo). Luego, si vas a desplegar Gitea: `GITEA_DB_PASSWORD='...' chmod +x docs/k8s/postgres/create-gitea-db.sh && ./docs/k8s/postgres/create-gitea-db.sh`

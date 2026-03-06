@@ -39,7 +39,7 @@ El auditor comprueba cada ítem. Cualquier fallo debe corregirse y re-auditar an
 
 ## 7. Red y exposición
 
-- [ ] Service tipo ClusterIP (no NodePort en producción).
+- [ ] **Servicios de la aplicación**: tipo ClusterIP. (El controller de Ingress puede usar NodePort para 80/443; es la excepción documentada.)
 - [ ] Si se expone: Ingress con host = subdominio (ej. `gitea.cld-lf.com`); exposición vía Cloudflare Tunnel (no port forwarding).
 
 ## 8. Namespace

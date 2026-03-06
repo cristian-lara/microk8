@@ -24,7 +24,7 @@ Este resumen describe la arquitectura y decisiones para exponer apps (ArgoCD/Git
 ## Componentes dentro de la VM
 - Kubernetes:
   - MicroK8s (single-node).
-  - Ingress NGINX (MicroK8s addon).
+  - Ingress NGINX instalado vía Helm (ingress-nginx), no addon de MicroK8s.
   - Helm.
 - Plataforma (objetivo):
   - PostgreSQL (recomendado: CloudNativePG).
