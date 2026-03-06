@@ -1,0 +1,24 @@
+# CloudNativePG Cluster for platform namespace - uses nfs-storage (Synology NFS).
+# Apply: kubectl apply -f postgres-platform.yaml (from this dir) or copy to VM and apply.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: platform-db
+  namespace: platform
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.3
+  storage:
+    storageClass: nfs-storage
+    size: 20Gi
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+  bootstrap:
+    initdb:
+      database: platform
+      owner: platform_owner
