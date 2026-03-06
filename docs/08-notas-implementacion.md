@@ -189,6 +189,13 @@ Si prefieres el addon:
 
 **Problema conocido:** si CloudNativePG ya estaba instalado con Helm, el addon puede fallar con *"Apply failed with conflicts: conflicts with helm"*. En ese caso se recomienda **usar solo Helm** (no mezclar addon y Helm para el mismo operador).
 
+**Problema conocido (Helm):** si Helm falla con *"ConfigMap cnpg-default-monitoring exists and cannot be imported: invalid ownership metadata"* (o faltan etiquetas `app.kubernetes.io/managed-by`, `meta.helm.sh/release-name`), es porque en `cnpg-system` quedaron recursos de una instalación anterior (addon o manual) sin metadatos de Helm. Para una **instalación limpia con Helm**: borrar el namespace y reinstalar: `microk8s kubectl delete namespace cnpg-system`, luego volver a ejecutar el script de instalación (o los comandos Helm de esta sección). No borrar `cnpg-system` si ya tienes clusters PostgreSQL (p. ej. `platform-db`) en producción y gestionados por ese operador. Ver `workflow/LEARNING.md`.
+
+**Problema conocido (CRDs con otro namespace):** si Helm falla con *"CustomResourceDefinition ... exists and cannot be imported ... meta.helm.sh/release-namespace must equal cnpg-system: current value is platform"*, las CRDs del operador fueron instaladas por una release en otro namespace (p. ej. `platform`). Dos opciones en la VM:
+
+- **Opción A – Instalación limpia** (no tienes clusters PostgreSQL que conservar): (1) Listar releases en ese namespace: `microk8s helm3 list -n platform`. (2) Desinstalar la release de CloudNativePG: `microk8s helm3 uninstall <release> -n platform`. (3) Borrar las CRDs: `microk8s kubectl get crd -o name | grep postgresql.cnpg.io | xargs microk8s kubectl delete`. (4) Re-ejecutar `./docs/k8s/postgres/install-cnpg-operator.sh`. Atención: borrar las CRDs elimina también todos los recursos de tipo Cluster, Backup, etc.; solo hacerlo si no necesitas conservarlos.
+- **Opción B – Conservar clusters existentes:** instalar el operador **sin** crear las CRDs (ya existen): `microk8s helm3 repo add cnpg https://cloudnative-pg.github.io/charts && microk8s helm3 repo update && microk8s helm3 install cnpg cnpg/cloudnative-pg -n cnpg-system --create-namespace --set crds.create=false`. Verificación: `microk8s kubectl get pods -n cnpg-system`.
+
 ### Orden
 
 Instalar el operador (Helm o addon) **antes** de ejecutar `./docs/k8s/postgres/apply-postgres-platform.sh`.

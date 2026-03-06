@@ -3,6 +3,11 @@
 # Run on the VM: chmod +x docs/k8s/postgres/install-cnpg-operator.sh && ./docs/k8s/postgres/install-cnpg-operator.sh
 # From repo root: ./docs/k8s/postgres/install-cnpg-operator.sh
 # See docs/08-notas-implementacion.md §9 and workflow/services/postgres/steps.md step 2.
+# If Helm fails with "ConfigMap cnpg-default-monitoring exists... invalid ownership metadata",
+#   do a clean install: microk8s kubectl delete namespace cnpg-system ; then re-run this script.
+# If Helm fails with "CRD ... exists ... release-namespace must equal cnpg-system: current value is platform",
+#   either: (A) uninstall from platform, delete CRDs (grep postgresql.cnpg.io | xargs delete), re-run; or
+#   (B) install without creating CRDs: add --set crds.create=false to the helm install line below (or run the one-liner from docs/08-notas-implementacion.md §9).
 
 set -e
 echo "Adding CloudNativePG Helm repo..."
