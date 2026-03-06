@@ -35,6 +35,7 @@ gitea:
       cpu: "500m"
       memory: "1Gi"
 
+  # Configuración principal de Gitea (app.ini generada por el chart)
   config:
     APP_NAME: "Gitea"
     RUN_MODE: "prod"
@@ -51,4 +52,12 @@ gitea:
       PASSWD: "dummy-temp"
     security:
       INSTALL_LOCK: "false"
+
+  # Admin inicial para instalación no interactiva (el init configure-gitea lo usa).
+  admin:
+    existingSecret: ""
+    username: "gitea_admin"
+    password: "change-me-soon"
+    email: "gitea@gitea.local"
+
 
