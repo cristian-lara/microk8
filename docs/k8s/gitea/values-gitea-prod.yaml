@@ -48,7 +48,7 @@ gitea:
       HOST: "platform-db-rw.platform.svc.cluster.local:5432"
       NAME: "gitea"
       USER: "gitea"
-      PASSWD: ""
+      PASSWD: "dummy-temp"
     security:
       INSTALL_LOCK: "false"
 
