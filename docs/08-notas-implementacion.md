@@ -23,7 +23,7 @@ Problema típico: `showmount -e` no muestra exports.
   3. En la carpeta `k8s` → **Edit → NFS Permissions**:
      - Hostname/IP: `192.168.50.0/24` o solo la IP de la VM.
      - Privilege: Read/Write.
-     - Squash: *Map all users to admin*.
+     - Squash: **recomendado *No mapping*** para que los UID del cliente (p. ej. 26 para PostgreSQL) se conserven en el NAS. Si usas *Map all users to admin*, PostgreSQL (CloudNativePG) falla con "data directory has wrong ownership" (ver más abajo).
   4. En la VM:
      - `sudo apt install -y nfs-common`
      - `showmount -e 192.168.50.254` → debe aparecer `/volume1/k8s`.
@@ -37,6 +37,11 @@ touch /mnt/nas-k8s/_test_from_vm
 ls -la /mnt/nas-k8s
 sudo umount /mnt/nas-k8s
 ```
+
+**PostgreSQL (CloudNativePG) y ownership en NFS:** Si al desplegar el cluster `platform-db` los pods de init fallan con *"FATAL: data directory ... has wrong ownership"*, es porque el squash NFS (p. ej. *Map all users to admin*) hace que los archivos en el NAS tengan el UID del admin (p. ej. 1024), mientras que el contenedor PostgreSQL corre como UID 26.
+
+- **Solución recomendada:** En NFS Permissions del share `k8s`, cambiar Squash a **No mapping**. Así el UID 26 (y cualquier otro) se preserva y el directorio de datos queda con la ownership correcta. Luego borrar el PVC `platform-db-1` (y el Job initdb si existe), volver a aplicar `postgres-platform.yaml` y dejar que se recree el volumen.
+- **Alternativa (mantener "Map all to admin"):** Usar en el Cluster el UID/GID del usuario admin del Synology (típicamente 1024:100): en `postgres-platform.yaml`, en `spec.podSecurityContext`, poner `runAsUser: 1024`, `runAsGroup: 100`, `fsGroup: 100`. Comprobar en el NAS el UID real del usuario admin si difiere. Ver `workflow/LEARNING.md` entrada "CloudNativePG / NFS".
 
 ---
 
@@ -200,6 +205,19 @@ Si prefieres el addon:
 
 Instalar el operador (Helm o addon) **antes** de ejecutar `./docs/k8s/postgres/apply-postgres-platform.sh`.
 
+### Pod platform-db-1-initdb-* en PodInitializing (diagnóstico)
+
+Si el PVC `platform-db-1` está **Bound** pero el pod de init (ej. `platform-db-1-initdb-xxxxx`) se queda en **PodInitializing** varios minutos:
+
+1. **Eventos y estado del pod:**  
+   `microk8s kubectl describe pod -n platform -l cnpg.io/cluster=platform-db`  
+   (o sustituir por el nombre exacto del pod). Revisar la sección *Events* y el estado de los init containers.
+
+2. **Logs del init container:**  
+   `microk8s kubectl logs -n platform <nombre-del-pod> -c bootstrap`  
+   (si el init se llama distinto, ver el nombre en el `describe`). Ahí suele aparecer si falla permisos, NFS o `initdb`.
+
+Causas habituales: **initdb en NFS** puede tardar varios minutos (5–10 min); permisos/ownership del volumen con `fsGroup`/NFS; o montaje NFS lento. Si en los logs aparece **"data directory has wrong ownership"**, es un problema de NFS squash (ver párrafo "PostgreSQL (CloudNativePG) y ownership en NFS" en §2): usar Squash **No mapping** o, en su defecto, `runAsUser`/`runAsGroup` del admin del Synology.
 ---
 
 ## 10. Redeploy, persistencia de datos y arranque tras apagado

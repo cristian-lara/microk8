@@ -79,7 +79,7 @@ Objetivo: levantar la plataforma **sin port forwarding**; cada app con su **subd
 - [x] Namespace de plataforma creado (ej. `platform` o similar) para aislar los componentes de plataforma (Vault, PostgreSQL, Gitea, ArgoCD, etc.) del resto de namespaces
   - Archivos: `docs/k8s/scripts/create-namespace-platform.sh` (opcional)
   - Ejecutar: `microk8s kubectl create namespace platform`
-- [ ] **Operador CloudNativePG** instalado (requerido antes de desplegar PostgreSQL)
+- [x] **Operador CloudNativePG** instalado (requerido antes de desplegar PostgreSQL)
   - Archivos: `docs/k8s/postgres/install-cnpg-operator.sh` (documentado en `docs/08-notas-implementacion.md` §9)
   - Ejecutar (en la VM, desde raíz del repo): `chmod +x docs/k8s/postgres/install-cnpg-operator.sh && ./docs/k8s/postgres/install-cnpg-operator.sh`. Verificación: `microk8s kubectl get pods -n cnpg-system`
 - [ ] **PostgreSQL** (CloudNativePG) usando `nfs-storage`
