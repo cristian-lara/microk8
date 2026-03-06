@@ -40,7 +40,7 @@ sudo umount /mnt/nas-k8s
 
 **PostgreSQL (CloudNativePG) y ownership en NFS:** Si al desplegar el cluster `platform-db` los pods de init fallan con *"FATAL: data directory ... has wrong ownership"*, es porque el squash NFS (p. ej. *Map all users to admin*) hace que los archivos en el NAS tengan el UID del admin (p. ej. 1024), mientras que el contenedor PostgreSQL corre como UID 26.
 
-- **Solución recomendada:** En NFS Permissions del share `k8s`, cambiar Squash a **No mapping**. Así el UID 26 (y cualquier otro) se preserva y el directorio de datos queda con la ownership correcta. Luego borrar el PVC `platform-db-1` (y el Job initdb si existe), volver a aplicar `postgres-platform.yaml` y dejar que se recree el volumen.
+- **Solución recomendada:** En NFS Permissions del share `k8s`, cambiar Squash a **No mapping**. Así el UID 26 (y cualquier otro) se preserva y el directorio de datos queda con la ownership correcta. Luego, para que el operador recree todo desde cero: (1) borrar el Cluster (no solo el PVC/Job), ya que si queda en estado "unrecoverable" el apply no hace nada: `microk8s kubectl delete cluster platform-db -n platform`. (2) Aplicar de nuevo: `./docs/k8s/postgres/apply-postgres-platform.sh`. El operador creará un nuevo PVC y un nuevo Job de initdb.
 - **Alternativa (mantener "Map all to admin"):** Usar en el Cluster el UID/GID del usuario admin del Synology (típicamente 1024:100): en `postgres-platform.yaml`, en `spec.podSecurityContext`, poner `runAsUser: 1024`, `runAsGroup: 100`, `fsGroup: 100`. Comprobar en el NAS el UID real del usuario admin si difiere. Ver `workflow/LEARNING.md` entrada "CloudNativePG / NFS".
 
 ---

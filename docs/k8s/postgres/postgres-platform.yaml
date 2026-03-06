@@ -1,8 +1,9 @@
 # CloudNativePG Cluster for platform namespace - uses nfs-storage (Synology NFS).
 # Apply: from repo root on VM: ./docs/k8s/postgres/apply-postgres-platform.sh
-# Compliant with .cursor/rules/k8s-yaml-prod.mdc (versioned image, resources, securityContext).
+# Compliant with .cursor/rules/k8s-yaml-prod.mdc (versioned image, resources).
 # NFS: Synology NFS Permissions must use Squash "No mapping" so UID 26 is preserved;
 #      otherwise initdb fails with "data directory has wrong ownership". See docs/08-notas-implementacion.md §2.
+# SecurityContext del contenedor: lo gestiona CloudNativePG; aquí solo fijamos el podSecurityContext.
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
@@ -27,15 +28,6 @@ spec:
     runAsGroup: 26
     fsGroup: 26
     runAsNonRoot: true
-  securityContext:
-    allowPrivilegeEscalation: false
-    privileged: false
-    readOnlyRootFilesystem: true
-    runAsNonRoot: true
-    capabilities:
-      drop:
-        - ALL
-      add: []  # add only if strictly needed
   bootstrap:
     initdb:
       database: platform
