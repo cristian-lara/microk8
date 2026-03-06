@@ -50,7 +50,7 @@ server:
   # Probes básicas; ajustar paths según modo (standalone vs ha).
   readinessProbe:
     enabled: true
-    path: /v1/sys/health?standbyok=true
+    path: /v1/sys/health?standbyok=true&uninitcode=200
     initialDelaySeconds: 10
     periodSeconds: 10
     timeoutSeconds: 5
@@ -58,7 +58,7 @@ server:
 
   livenessProbe:
     enabled: true
-    path: /v1/sys/health?standbyok=true
+    path: /v1/sys/health?standbyok=true&uninitcode=200
     initialDelaySeconds: 30
     periodSeconds: 10
     timeoutSeconds: 5
