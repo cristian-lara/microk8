@@ -1,0 +1,54 @@
+gitea:
+  replicaCount: 1
+
+  image:
+    repository: gitea/gitea
+    tag: 1.22.3
+    pullPolicy: IfNotPresent
+
+  service:
+    http:
+      type: ClusterIP
+      port: 3000
+    ssh:
+      type: ClusterIP
+      port: 22
+
+  persistence:
+    enabled: true
+    storageClass: nfs-storage
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+    runAsNonRoot: true
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+  config:
+    APP_NAME: "Gitea"
+    RUN_MODE: "prod"
+    server:
+      ROOT_URL: "https://gitea.cld-lf.com/"
+      DOMAIN: "gitea.cld-lf.com"
+      PROTOCOL: "http"
+      HTTP_PORT: 3000
+    database:
+      DB_TYPE: "postgres"
+      HOST: "platform-db-rw.platform.svc.cluster.local:5432"
+      NAME: "gitea"
+      USER: "gitea"
+      PASSWD: ""
+    security:
+      INSTALL_LOCK: "false"
+
