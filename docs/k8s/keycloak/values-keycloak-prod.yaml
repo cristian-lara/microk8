@@ -1,69 +1,85 @@
 # Keycloak Helm Chart - Production Values
-# Chart: bitnami/keycloak
-# Documentation: https://github.com/bitnami/charts/tree/main/bitnami/keycloak
+# Chart: codecentric/keycloakx (uses official Keycloak image)
+# Documentation: https://github.com/codecentric/helm-charts/tree/master/charts/keycloakx
 #
-# This configuration:
-# - Disables internal PostgreSQL (uses external platform-db)
-# - Uses nfs-storage for persistence (themes, providers)
-# - Configures for production mode
-# - Exposes via Ingress for Cloudflare Tunnel
+# Note: Bitnami images are no longer free since Aug 2025.
+# This uses the official Keycloak image from quay.io/keycloak/keycloak
 
 # =============================================================================
-# KEYCLOAK CONFIGURATION
-# =============================================================================
-auth:
-  adminUser: admin
-  existingSecret: keycloak-admin-secret
-  passwordSecretKey: admin-password
-
-# Production mode
-production: true
-
-# Proxy configuration (behind Cloudflare/Ingress)
-proxy: edge
-proxyHeaders: xforwarded
-
-# =============================================================================
-# DISABLE INTERNAL POSTGRESQL
-# =============================================================================
-postgresql:
-  enabled: false
-
-# =============================================================================
-# EXTERNAL DATABASE (platform-db)
-# =============================================================================
-externalDatabase:
-  host: platform-db-rw.platform.svc.cluster.local
-  port: 5432
-  user: keycloak
-  database: keycloak
-  existingSecret: keycloak-db-secret
-  existingSecretPasswordKey: password
-
-# =============================================================================
-# IMAGE
+# IMAGE (Official Keycloak)
 # =============================================================================
 image:
-  registry: docker.io
-  repository: bitnami/keycloak
+  repository: quay.io/keycloak/keycloak
   tag: "24.0.5"
   pullPolicy: IfNotPresent
 
 # =============================================================================
+# COMMAND (Production mode with external DB)
+# =============================================================================
+command:
+  - "/opt/keycloak/bin/kc.sh"
+args:
+  - "start"
+  - "--hostname=keycloak.cld-lf.com"
+  - "--hostname-strict=false"
+  - "--http-enabled=true"
+  - "--proxy-headers=xforwarded"
+  - "--db=postgres"
+  - "--db-url-host=$(KC_DB_URL_HOST)"
+  - "--db-url-database=$(KC_DB_URL_DATABASE)"
+  - "--db-username=$(KC_DB_USERNAME)"
+  - "--db-password=$(KC_DB_PASSWORD)"
+
+# =============================================================================
 # REPLICAS
 # =============================================================================
-replicaCount: 1
+replicas: 1
+
+# =============================================================================
+# ENVIRONMENT VARIABLES
+# =============================================================================
+extraEnv: |
+  - name: KC_DB_URL_HOST
+    value: "platform-db-rw.platform.svc.cluster.local"
+  - name: KC_DB_URL_DATABASE
+    value: "keycloak"
+  - name: KC_DB_USERNAME
+    value: "keycloak"
+  - name: KC_DB_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-db-secret
+        key: password
+  - name: KEYCLOAK_ADMIN
+    value: "admin"
+  - name: KEYCLOAK_ADMIN_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        name: keycloak-admin-secret
+        key: admin-password
+  - name: KC_HEALTH_ENABLED
+    value: "true"
+  - name: KC_METRICS_ENABLED
+    value: "false"
+  - name: KC_HTTP_RELATIVE_PATH
+    value: "/"
+  - name: JAVA_OPTS_APPEND
+    value: "-Djgroups.dns.query=keycloak-headless.platform.svc.cluster.local"
 
 # =============================================================================
 # SERVICE
 # =============================================================================
 service:
   type: ClusterIP
-  http:
-    enabled: true
-  ports:
-    http: 80
-    https: 443
+  httpPort: 80
+  httpsPort: 443
+  httpNodePort: null
+  httpsNodePort: null
+  annotations: {}
+  labels: {}
+
+http:
+  relativePath: "/"
 
 # =============================================================================
 # INGRESS
@@ -71,104 +87,82 @@ service:
 ingress:
   enabled: true
   ingressClassName: nginx
-  hostname: keycloak.cld-lf.com
-  path: /
-  pathType: Prefix
   annotations:
     nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
     nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
-  tls: false
+  rules:
+    - host: keycloak.cld-lf.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
 
 # =============================================================================
 # RESOURCES
 # =============================================================================
 resources:
   requests:
-    cpu: 250m
-    memory: 512Mi
+    cpu: "250m"
+    memory: "512Mi"
   limits:
     cpu: "2"
-    memory: 1536Mi
+    memory: "1536Mi"
 
 # =============================================================================
 # SECURITY CONTEXT
 # =============================================================================
-podSecurityContext:
-  enabled: true
-  fsGroup: 1001
+securityContext:
+  runAsUser: 1000
+  runAsNonRoot: true
+  fsGroup: 1000
 
 containerSecurityContext:
-  enabled: true
-  runAsUser: 1001
+  runAsUser: 1000
   runAsNonRoot: true
   allowPrivilegeEscalation: false
   capabilities:
     drop:
       - ALL
-  seccompProfile:
-    type: RuntimeDefault
 
 # =============================================================================
 # PROBES
 # =============================================================================
-livenessProbe:
-  enabled: true
+livenessProbe: |
+  httpGet:
+    path: /health/live
+    port: http
   initialDelaySeconds: 300
   periodSeconds: 10
   timeoutSeconds: 5
   failureThreshold: 3
-  successThreshold: 1
 
-readinessProbe:
-  enabled: true
+readinessProbe: |
+  httpGet:
+    path: /health/ready
+    port: http
   initialDelaySeconds: 30
   periodSeconds: 10
   timeoutSeconds: 5
   failureThreshold: 3
-  successThreshold: 1
 
-startupProbe:
-  enabled: true
+startupProbe: |
+  httpGet:
+    path: /health/started
+    port: http
   initialDelaySeconds: 30
   periodSeconds: 10
   timeoutSeconds: 5
   failureThreshold: 60
-  successThreshold: 1
 
 # =============================================================================
-# PERSISTENCE (for themes, providers, etc.)
+# DATABASE (disabled - using external)
 # =============================================================================
-# Keycloak doesn't require persistence for data (stored in DB)
-# but can be useful for custom themes/providers
-
-# =============================================================================
-# LOGGING
-# =============================================================================
-logging:
-  output: default
-  level: INFO
-
-# =============================================================================
-# KEYCLOAK CONFIGURATION (extra environment variables)
-# =============================================================================
-extraEnvVars:
-  - name: KEYCLOAK_EXTRA_ARGS
-    value: "--hostname-strict=false"
-  - name: KC_HOSTNAME_URL
-    value: "https://keycloak.cld-lf.com"
-  - name: KC_HOSTNAME_ADMIN_URL
-    value: "https://keycloak.cld-lf.com"
-
-# =============================================================================
-# CACHE (for single replica, use local cache)
-# =============================================================================
-cache:
-  enabled: true
-  stackName: kubernetes
-  stackFile: ""
-
-# =============================================================================
-# METRICS (optional - for monitoring)
-# =============================================================================
-metrics:
+postgresql:
   enabled: false
+
+# =============================================================================
+# STATEFULSET
+# =============================================================================
+statefulsetLabels: {}
+podLabels: {}
+podAnnotations: {}

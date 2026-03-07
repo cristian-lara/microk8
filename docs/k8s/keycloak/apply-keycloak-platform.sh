@@ -33,13 +33,13 @@ fi
 echo "Prerequisites OK."
 echo ""
 
-echo "Adding Bitnami Helm repo..."
-microk8s helm3 repo add bitnami https://charts.bitnami.com/bitnami 2>/dev/null || true
+echo "Adding Codecentric Helm repo (official Keycloak image)..."
+microk8s helm3 repo add codecentric https://codecentric.github.io/helm-charts 2>/dev/null || true
 microk8s helm3 repo update
 
 echo ""
 echo "Installing/upgrading Keycloak in namespace platform..."
-microk8s helm3 upgrade --install keycloak bitnami/keycloak \
+microk8s helm3 upgrade --install keycloak codecentric/keycloakx \
   --namespace platform \
   --create-namespace \
   -f values-keycloak-prod.yaml \
