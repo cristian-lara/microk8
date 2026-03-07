@@ -137,10 +137,13 @@ Resumen de prioridades (detallado en `plan-de-trabajo.md`). **Orden estricto** p
 5. **PostgreSQL** (CloudNativePG) usando `nfs-storage`; esperar pods Running.
 6. **Vault** (secrets) usando PVC en `nfs-storage`; init y unseal.
 7. **Vault vinculado a PostgreSQL** (motor database, credenciales dinámicas); ver `docs/k8s/vault/vault-postgres-integration.md`.
-8. Gitea (código) → usa PostgreSQL y puede usar credenciales dinámicas de Vault.
-9. ArgoCD (GitOps) → se integra con Gitea.
-10. CI/Registry (opcional).
-11. Apps de negocio en namespaces propios, con secretos desde Vault y exposición por Tunnel + Access.
+8. **Gitea** (código) → usa PostgreSQL; auth local inicial.
+9. **Keycloak** (IdP centralizado) → usa PostgreSQL; ver §13.
+10. **Integrar Gitea con Keycloak** (OIDC) → reconfigurar auth.
+11. **ArgoCD** (GitOps) → con Keycloak desde el inicio.
+12. **Vault integrado con Keycloak** (OIDC auth method).
+13. CI/Registry (opcional, ya con SSO).
+14. Apps de negocio en namespaces propios, con secretos desde Vault, SSO desde Keycloak, y exposición por Tunnel + Access.
 
 **Vault + PostgreSQL (credenciales dinámicas):** Tras tener PostgreSQL y Vault desplegados, se configura el motor de secretos **database** en Vault para que genere credenciales de PostgreSQL con rotación (TTL). Las apps (Gitea, ArgoCD, etc.) consumen `database/creds/gitea` (o el rol que corresponda) en lugar de un usuario fijo. Ver `docs/k8s/vault/vault-postgres-integration.md` y scripts: `create-vault-db-user.sh`, `grant-vault-to-gitea.sh`, `setup-database-engine.sh`.
 
@@ -308,4 +311,64 @@ Si el usuario de DB (`gitea`) ya existía de un intento anterior con otro passwo
 microk8s kubectl exec -n platform platform-db-1 -c postgres -- \
   psql -U postgres -c "ALTER USER gitea WITH PASSWORD '<password-correcto>';"
 ```
+
+---
+
+## 13. Identity Provider centralizado (Keycloak)
+
+### Decisión arquitectónica
+
+En lugar de gestionar usuarios locales en cada aplicación (Gitea, ArgoCD, Vault, etc.), se utiliza **Keycloak** como Identity Provider (IdP) centralizado. Esto permite:
+
+- **Un solo lugar** para gestionar usuarios, roles y permisos.
+- **SSO (Single Sign-On)**: Login una vez, acceso a todas las apps.
+- **OIDC/OAuth2**: Protocolo estándar soportado por todas las apps de la plataforma.
+- **Integración con Google**: Keycloak puede federar con Google como IdP externo.
+
+### Arquitectura de autenticación
+
+```
+┌─────────────────────────────────────────────────────┐
+│               Cloudflare Access                      │
+│         (Primera capa - quién puede llegar)          │
+└─────────────────────┬───────────────────────────────┘
+                      │
+┌─────────────────────▼───────────────────────────────┐
+│                   Keycloak                           │
+│     keycloak.cld-lf.com (IdP centralizado)          │
+│     - Realm: cld-lf                                  │
+│     - Usuarios, roles, grupos                        │
+│     - Clients: gitea, argocd, vault, etc.           │
+└─────────────────────┬───────────────────────────────┘
+                      │ OIDC
+        ┌─────────────┼─────────────┬─────────────┐
+        ▼             ▼             ▼             ▼
+    ┌───────┐    ┌────────┐    ┌───────┐    ┌────────┐
+    │ Gitea │    │ ArgoCD │    │ Vault │    │ Harbor │
+    └───────┘    └────────┘    └───────┘    └────────┘
+```
+
+### Orden de despliegue
+
+1. **Keycloak** desplegado con PostgreSQL (`platform-db`).
+2. Configurar realm `cld-lf`, crear usuarios admin, configurar IdP Google (opcional).
+3. **Crear client OIDC** para cada app en Keycloak.
+4. **Reconfigurar apps** (Gitea, ArgoCD, Vault) para usar Keycloak como auth provider.
+
+### Roles sugeridos
+
+| Rol | Descripción | Apps |
+|-----|-------------|------|
+| `admin` | Administrador de plataforma | Todas |
+| `developer` | Desarrollador (push/pull code, deploy) | Gitea, ArgoCD |
+| `viewer` | Solo lectura | Gitea (read), ArgoCD (view) |
+
+### Bases de datos en platform-db
+
+| App | Database | Usuario |
+|-----|----------|---------|
+| Gitea | `gitea` | `gitea` |
+| Keycloak | `keycloak` | `keycloak` |
+| ArgoCD | (usa ConfigMaps/Secrets) | N/A |
+| Harbor | `harbor` | `harbor` |
 

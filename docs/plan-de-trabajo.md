@@ -91,16 +91,39 @@ Objetivo: levantar la plataforma **sin port forwarding**; cada app con su **subd
 - [ ] **Vault vinculado a PostgreSQL** (motor database, credenciales dinámicas, rotación para Gitea/ArgoCD)
   - Archivos: `docs/k8s/vault/vault-postgres-integration.md`, `docs/k8s/postgres/create-vault-db-user.sh`, `docs/k8s/postgres/grant-vault-to-gitea.sh`, `docs/k8s/vault/setup-database-engine.sh`
   - Ejecutar: (1) `VAULT_DB_ADMIN_PASSWORD='...' ./docs/k8s/postgres/create-vault-db-user.sh` (2) Crear DB gitea si aplica y `./docs/k8s/postgres/grant-vault-to-gitea.sh` (3) Tras unseal Vault: `VAULT_ADDR=... VAULT_TOKEN=... VAULT_DB_ADMIN_PASSWORD=... ./docs/k8s/vault/setup-database-engine.sh`. Ver orden completo en `docs/k8s/vault/vault-postgres-integration.md`
-- [x] **Gitea** desplegado
+- [x] **Gitea** desplegado (auth local temporal)
   - Archivos: `docs/k8s/gitea/values-gitea-prod.yaml`, `docs/k8s/gitea/apply-gitea-platform.sh`
   - Ejecutar: `chmod +x docs/k8s/gitea/apply-gitea-platform.sh && ./docs/k8s/gitea/apply-gitea-platform.sh` (desde la raíz del repo)
   - Acceso: `https://gitea.cld-lf.com` (Cloudflare Tunnel → localhost:80 → Ingress → Gitea)
-- [ ] **ArgoCD** desplegado (para GitOps)
+  - **Nota**: Auth local por ahora; se reconfigurará con Keycloak tras desplegar el IdP.
+
+### 5b. Identity Provider centralizado (SSO)
+
+- [ ] **Keycloak** desplegado (IdP centralizado para todas las apps)
+  - Archivos: `docs/k8s/keycloak/values-keycloak-prod.yaml`, `docs/k8s/keycloak/apply-keycloak-platform.sh`
+  - Ejecutar: (1) Crear DB `keycloak` en platform-db. (2) `chmod +x docs/k8s/keycloak/apply-keycloak-platform.sh && ./docs/k8s/keycloak/apply-keycloak-platform.sh`
+  - Acceso: `https://keycloak.cld-lf.com`
+  - Post-deploy: Crear realm `cld-lf`, configurar IdP Google, crear clients para cada app.
+- [ ] **Gitea integrado con Keycloak** (OIDC)
+  - Archivos: Actualizar `docs/k8s/gitea/values-gitea-prod.yaml` con config OIDC
+  - Ejecutar: Redeploy Gitea con nueva config; crear client `gitea` en Keycloak.
+- [ ] **ArgoCD** desplegado con Keycloak (OIDC desde el inicio)
   - Archivos: `docs/k8s/argocd/values-argocd-prod.yaml`, `docs/k8s/argocd/apply-argocd-platform.sh`
   - Ejecutar: `chmod +x docs/k8s/argocd/apply-argocd-platform.sh && ./docs/k8s/argocd/apply-argocd-platform.sh` (desde la raíz del repo)
-- [ ] (Opcional) **Woodpecker CI / Registry (Harbor)** desplegados
-  - Archivos: `docs/k8s/woodpecker/` y/o `docs/k8s/harbor/` (values + `apply-*.sh` por componente)
-  - Ejecutar: `chmod +x docs/k8s/<componente>/apply-*.sh && ./docs/k8s/<componente>/apply-*.sh`
+  - Acceso: `https://argo.cld-lf.com`
+- [ ] **Vault integrado con Keycloak** (OIDC)
+  - Archivos: Configuración OIDC en Vault
+  - Ejecutar: Habilitar auth OIDC en Vault, crear client `vault` en Keycloak.
+  - Acceso: `https://vault.cld-lf.com`
+
+### 5c. Apps adicionales (con SSO)
+
+- [ ] (Opcional) **Woodpecker CI** desplegado con Keycloak
+  - Archivos: `docs/k8s/woodpecker/values-woodpecker-prod.yaml`
+  - Acceso: `https://ci.cld-lf.com`
+- [ ] (Opcional) **Harbor** (Registry) desplegado con Keycloak
+  - Archivos: `docs/k8s/harbor/values-harbor-prod.yaml`
+  - Acceso: `https://registry.cld-lf.com`
 - [ ] Validación: pods de la plataforma `Running` y PVCs creados con `nfs-storage`
   - Archivos: `docs/k8s/scripts/validate-platform.sh`
   - Ejecutar: `chmod +x docs/k8s/scripts/validate-platform.sh && ./docs/k8s/scripts/validate-platform.sh`
