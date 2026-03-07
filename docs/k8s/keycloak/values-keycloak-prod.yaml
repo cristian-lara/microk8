@@ -124,15 +124,19 @@ ingress:
   annotations:
     nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
     nginx.ingress.kubernetes.io/proxy-buffers-number: "4"
+    nginx.ingress.kubernetes.io/proxy-buffering: "on"
     nginx.ingress.kubernetes.io/use-forwarded-headers: "true"
-    # Tunnel hits Ingress on HTTP; force HTTPS so Keycloak generates https:// for iframes (avoids mixed content)
-    # Use RFC 7239 Forwarded header (Keycloak with proxy-headers=forwarded) for reliable scheme detection
+    # 1) Headers so Keycloak may use correct scheme (if it reads them)
+    # 2) Rewrite response body: http -> https for our host (fixes mixed content when Keycloak ignores headers)
     nginx.ingress.kubernetes.io/configuration-snippet: |
       proxy_set_header Forwarded "proto=https;host=$host;port=443";
       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       proxy_set_header X-Forwarded-Proto "https";
       proxy_set_header X-Forwarded-Port "443";
       proxy_set_header X-Forwarded-Host $host;
+      sub_filter 'http://keycloak.cld-lf.com' 'https://keycloak.cld-lf.com';
+      sub_filter_once off;
+      sub_filter_types text/html application/json application/javascript;
   rules:
     - host: keycloak.cld-lf.com
       paths:
