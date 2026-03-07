@@ -49,8 +49,9 @@ extraEnv: |
       secretKeyRef:
         name: keycloak-db-secret
         key: password
+  # Full URL with scheme so Keycloak generates HTTPS for all frontend URLs (avoids mixed content in iframes)
   - name: KC_HOSTNAME
-    value: "keycloak.cld-lf.com"
+    value: "https://keycloak.cld-lf.com"
   - name: KC_HOSTNAME_ADMIN
     value: "https://keycloak.cld-lf.com"
   - name: KC_HOSTNAME_STRICT
