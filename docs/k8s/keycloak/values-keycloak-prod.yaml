@@ -1,12 +1,15 @@
 # Keycloak Helm Chart - Production Values
-# Chart: codecentric/keycloakx (uses official Keycloak image)
+# Chart: codecentric/keycloakx
 # Documentation: https://github.com/codecentric/helm-charts/tree/master/charts/keycloakx
 #
-# Note: Bitnami images are no longer free since Aug 2025.
-# This uses the official Keycloak image from quay.io/keycloak/keycloak
+# VALIDATED CONFIGURATION:
+# - Uses official Keycloak image from quay.io
+# - Single replica (no clustering) with local cache
+# - External PostgreSQL (platform-db)
+# - cache.stack: custom disables automatic cache config
 
 # =============================================================================
-# IMAGE (Official Keycloak)
+# IMAGE
 # =============================================================================
 image:
   repository: quay.io/keycloak/keycloak
@@ -14,33 +17,29 @@ image:
   pullPolicy: IfNotPresent
 
 # =============================================================================
-# COMMAND (Production mode with external DB)
+# REPLICAS (single instance)
 # =============================================================================
+replicas: 1
+
+# =============================================================================
+# COMMAND AND ARGS
+# =============================================================================
+# Override to use production start with explicit DB config
 command:
   - "/opt/keycloak/bin/kc.sh"
 args:
   - "start"
-  - "--hostname=keycloak.cld-lf.com"
-  - "--hostname-strict=false"
-  - "--http-enabled=true"
-  - "--proxy-headers=xforwarded"
-  - "--db=postgres"
-  - "--db-url-host=$(KC_DB_URL_HOST)"
-  - "--db-url-database=$(KC_DB_URL_DATABASE)"
-  - "--db-username=$(KC_DB_USERNAME)"
-  - "--db-password=$(KC_DB_PASSWORD)"
-
-# =============================================================================
-# REPLICAS
-# =============================================================================
-replicas: 1
 
 # =============================================================================
 # ENVIRONMENT VARIABLES
 # =============================================================================
 extraEnv: |
+  - name: KC_DB
+    value: "postgres"
   - name: KC_DB_URL_HOST
     value: "platform-db-rw.platform.svc.cluster.local"
+  - name: KC_DB_URL_PORT
+    value: "5432"
   - name: KC_DB_URL_DATABASE
     value: "keycloak"
   - name: KC_DB_USERNAME
@@ -50,6 +49,14 @@ extraEnv: |
       secretKeyRef:
         name: keycloak-db-secret
         key: password
+  - name: KC_HOSTNAME
+    value: "keycloak.cld-lf.com"
+  - name: KC_HOSTNAME_STRICT
+    value: "false"
+  - name: KC_HTTP_ENABLED
+    value: "true"
+  - name: KC_PROXY_HEADERS
+    value: "xforwarded"
   - name: KEYCLOAK_ADMIN
     value: "admin"
   - name: KEYCLOAK_ADMIN_PASSWORD
@@ -57,16 +64,40 @@ extraEnv: |
       secretKeyRef:
         name: keycloak-admin-secret
         key: admin-password
-  - name: KC_HEALTH_ENABLED
-    value: "true"
-  - name: KC_METRICS_ENABLED
-    value: "false"
-  - name: KC_HTTP_RELATIVE_PATH
-    value: "/"
-  - name: KC_CACHE
-    value: "local"
-  - name: KC_CACHE_STACK
-    value: ""
+
+# =============================================================================
+# CACHE (CRITICAL: use "custom" to disable automatic jdbc-ping config)
+# =============================================================================
+cache:
+  stack: custom
+
+# =============================================================================
+# PROXY
+# =============================================================================
+proxy:
+  enabled: true
+  mode: xforwarded
+
+# =============================================================================
+# HTTP
+# =============================================================================
+http:
+  relativePath: "/"
+
+# =============================================================================
+# HEALTH AND METRICS
+# =============================================================================
+health:
+  enabled: true
+
+metrics:
+  enabled: false
+
+# =============================================================================
+# DATABASE (disabled - using external via env vars)
+# =============================================================================
+database:
+  vendor: ""
 
 # =============================================================================
 # SERVICE
@@ -75,13 +106,6 @@ service:
   type: ClusterIP
   httpPort: 80
   httpsPort: 443
-  httpNodePort: null
-  httpsNodePort: null
-  annotations: {}
-  labels: {}
-
-http:
-  relativePath: "/"
 
 # =============================================================================
 # INGRESS
@@ -113,29 +137,23 @@ resources:
 # =============================================================================
 # SECURITY CONTEXT
 # =============================================================================
+podSecurityContext:
+  fsGroup: 1000
+
 securityContext:
   runAsUser: 1000
   runAsNonRoot: true
-  fsGroup: 1000
-
-containerSecurityContext:
-  runAsUser: 1000
-  runAsNonRoot: true
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
 
 # =============================================================================
-# PROBES
+# PROBES (use chart defaults with correct relativePath)
 # =============================================================================
 livenessProbe: |
   httpGet:
     path: /health/live
     port: http
   initialDelaySeconds: 300
-  periodSeconds: 10
   timeoutSeconds: 5
+  periodSeconds: 10
   failureThreshold: 3
 
 readinessProbe: |
@@ -143,34 +161,21 @@ readinessProbe: |
     path: /health/ready
     port: http
   initialDelaySeconds: 30
-  periodSeconds: 10
   timeoutSeconds: 5
+  periodSeconds: 10
   failureThreshold: 3
 
 startupProbe: |
   httpGet:
-    path: /health/started
+    path: /health
     port: http
   initialDelaySeconds: 30
-  periodSeconds: 10
   timeoutSeconds: 5
   failureThreshold: 60
+  periodSeconds: 5
 
 # =============================================================================
-# DATABASE (disabled - using external)
+# DBCHECKER (disabled - we trust platform-db is ready)
 # =============================================================================
-postgresql:
+dbchecker:
   enabled: false
-
-# =============================================================================
-# CACHE (single replica - disable distributed cache)
-# =============================================================================
-cache:
-  stack: ""
-
-# =============================================================================
-# STATEFULSET
-# =============================================================================
-statefulsetLabels: {}
-podLabels: {}
-podAnnotations: {}
