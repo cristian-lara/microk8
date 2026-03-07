@@ -21,6 +21,7 @@ production: true
 
 # Proxy configuration (behind Cloudflare/Ingress)
 proxy: edge
+proxyHeaders: xforwarded
 
 # =============================================================================
 # DISABLE INTERNAL POSTGRESQL
