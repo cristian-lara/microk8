@@ -91,9 +91,10 @@ Objetivo: levantar la plataforma **sin port forwarding**; cada app con su **subd
 - [ ] **Vault vinculado a PostgreSQL** (motor database, credenciales dinámicas, rotación para Gitea/ArgoCD)
   - Archivos: `docs/k8s/vault/vault-postgres-integration.md`, `docs/k8s/postgres/create-vault-db-user.sh`, `docs/k8s/postgres/grant-vault-to-gitea.sh`, `docs/k8s/vault/setup-database-engine.sh`
   - Ejecutar: (1) `VAULT_DB_ADMIN_PASSWORD='...' ./docs/k8s/postgres/create-vault-db-user.sh` (2) Crear DB gitea si aplica y `./docs/k8s/postgres/grant-vault-to-gitea.sh` (3) Tras unseal Vault: `VAULT_ADDR=... VAULT_TOKEN=... VAULT_DB_ADMIN_PASSWORD=... ./docs/k8s/vault/setup-database-engine.sh`. Ver orden completo en `docs/k8s/vault/vault-postgres-integration.md`
-- [ ] **Gitea** desplegado
+- [x] **Gitea** desplegado
   - Archivos: `docs/k8s/gitea/values-gitea-prod.yaml`, `docs/k8s/gitea/apply-gitea-platform.sh`
   - Ejecutar: `chmod +x docs/k8s/gitea/apply-gitea-platform.sh && ./docs/k8s/gitea/apply-gitea-platform.sh` (desde la raíz del repo)
+  - Acceso: `https://gitea.cld-lf.com` (Cloudflare Tunnel → localhost:80 → Ingress → Gitea)
 - [ ] **ArgoCD** desplegado (para GitOps)
   - Archivos: `docs/k8s/argocd/values-argocd-prod.yaml`, `docs/k8s/argocd/apply-argocd-platform.sh`
   - Ejecutar: `chmod +x docs/k8s/argocd/apply-argocd-platform.sh && ./docs/k8s/argocd/apply-argocd-platform.sh` (desde la raíz del repo)

@@ -6,10 +6,10 @@ Pasos ordenados para desplegar Gitea. Cada paso debe ser validado antes de conti
 
 ## Pre-requisitos (verificar antes de empezar)
 
-- [ ] PostgreSQL `platform-db` Running en namespace `platform`.
-- [ ] Base de datos `gitea` y usuario `gitea` creados (script `create-gitea-db.sh`).
-- [ ] Vault Running (opcional para credenciales dinámicas en Fase 2).
-- [ ] NFS Squash configurado como "No mapping" en Synology.
+- [x] PostgreSQL `platform-db` Running en namespace `platform`.
+- [x] Base de datos `gitea` y usuario `gitea` creados (script `create-gitea-db.sh`).
+- [x] Vault Running (opcional para credenciales dinámicas en Fase 2).
+- [x] NFS Squash configurado como "No mapping" en Synology.
 
 ---
 
@@ -92,18 +92,22 @@ microk8s kubectl logs -n platform gitea-0 | head -50
 
 ## Step 4: Configurar DNS y Cloudflare Tunnel
 
-**Manual en Cloudflare Dashboard**:
+**Manual en Cloudflare Dashboard** (Zero Trust → Networks → Tunnels → home-microk8s → Public Hostname):
 
-1. **DNS**: Crear registro CNAME/Tunnel para `gitea.cld-lf.com` → túnel `home-microk8s`.
-2. **Tunnel Public Hostname**: 
-   - Hostname: `gitea.cld-lf.com`
-   - Service: `http://gitea-http.platform.svc.cluster.local:3000`
-3. **Access App** (recomendado):
+1. **Tunnel Public Hostname**: 
+   - Subdomain: `gitea`
+   - Domain: `cld-lf.com`
+   - Type: `HTTP`
+   - **URL**: `localhost:80` (NO usar `.svc.cluster.local` porque cloudflared corre fuera del cluster)
+   
+2. **Access App** (recomendado):
    - Crear app en Zero Trust → Access → Applications.
    - Dominio: `gitea.cld-lf.com`.
    - Políticas: IdP Google + allowlist de emails + MFA.
 
 **Criterio de éxito**: `https://gitea.cld-lf.com` muestra la UI de Gitea (o pantalla de login de Access).
+
+**Nota**: El flujo es Tunnel → localhost:80 (Ingress MicroK8s) → Ingress rule → gitea-http → Pod.
 
 ---
 

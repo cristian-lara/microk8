@@ -271,3 +271,41 @@ Para levantar o modificar servicios de forma ordenada y validada existe el direc
 
 Cualquier IA o persona que trabaje en despliegues debe leer `docs/plan-de-trabajo.md` y `docs/08-notas-implementacion.md` y, si usa el workflow, seguir los flujos de análisis y ejecución y la regla de pull post-step.
 
+---
+
+## 12. Gitea – configuración y troubleshooting
+
+### Configuración del Helm chart
+
+El chart oficial de Gitea (`gitea-charts/gitea`) despliega por defecto subcharts de **PostgreSQL-HA** y **Valkey-Cluster**. Para usar nuestra infraestructura existente (`platform-db`), se deshabilitan en `values-gitea-prod.yaml`:
+
+```yaml
+postgresql-ha:
+  enabled: false
+valkey-cluster:
+  enabled: false
+redis-cluster:
+  enabled: false
+```
+
+La base de datos se configura como externa apuntando a `platform-db-rw.platform.svc.cluster.local:5432`, con el password cargado desde un Secret de Kubernetes (`gitea-db-secret`) via `additionalConfigFromEnvs`.
+
+### Cloudflare Tunnel – URL correcta
+
+El túnel (`cloudflared`) corre como servicio de sistema en la VM, **fuera del cluster**. Por esto, **no puede resolver DNS internos de Kubernetes** como `gitea-http.platform.svc.cluster.local`.
+
+**Configuración correcta del Public Hostname**:
+- Type: `HTTP`
+- URL: `localhost:80`
+
+El flujo es: Cloudflare → Tunnel → localhost:80 (Ingress controller MicroK8s) → Ingress `gitea.cld-lf.com` → Service `gitea-http` → Pod Gitea.
+
+### Gotcha: password de usuario existente
+
+Si el usuario de DB (`gitea`) ya existía de un intento anterior con otro password, el pod falla con `password authentication failed`. Solución:
+
+```bash
+microk8s kubectl exec -n platform platform-db-1 -c postgres -- \
+  psql -U postgres -c "ALTER USER gitea WITH PASSWORD '<password-correcto>';"
+```
+
