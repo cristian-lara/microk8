@@ -363,6 +363,16 @@ En lugar de gestionar usuarios locales en cada aplicación (Gitea, ArgoCD, Vault
 | `developer` | Desarrollador (push/pull code, deploy) | Gitea, ArgoCD |
 | `viewer` | Solo lectura | Gitea (read), ArgoCD (view) |
 
+### 13.1 Keycloak Admin Console – mixed content (3p-cookies) y excepción al “cero port-forward”
+
+Con Keycloak detrás de Tunnel + Ingress (TLS en Cloudflare), la consola Admin puede mostrar *Mixed Content* (iframe `3p-cookies/step1.html` en http). Se probó: headers proxy (Forwarded, X-Forwarded-*), `sub_filter` en Ingress, `Accept-Encoding ""`, `sub_filter_types *`. Si **tras el último helm upgrade** sigue igual:
+
+- **No más vueltas:** se documenta como limitación conocida de Keycloak 24 detrás de proxy con terminación TLS.
+- **Excepción aceptada al “no port-forward”:** usar port-forward **solo** para abrir la consola Admin cuando haga falta (crear realm, clients, usuarios):  
+  `microk8s kubectl port-forward -n platform svc/keycloak-keycloakx-http 8080:80` → abrir `http://localhost:8080/admin`.  
+  El resto (login OIDC, Gitea, ArgoCD, etc.) sigue 100% por **https://keycloak.cld-lf.com** sin port-forward.
+- **Alternativa futura:** probar upgrade a Keycloak 25/26 por si el comportamiento del hostname/iframe está corregido.
+
 ### Bases de datos en platform-db
 
 | App | Database | Usuario |

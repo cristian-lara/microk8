@@ -138,7 +138,7 @@ ingress:
       proxy_set_header X-Forwarded-Host $host;
       sub_filter 'http://keycloak.cld-lf.com' 'https://keycloak.cld-lf.com';
       sub_filter_once off;
-      sub_filter_types text/html application/json application/javascript application/x-javascript;
+      sub_filter_types *;
   rules:
     - host: keycloak.cld-lf.com
       paths:
