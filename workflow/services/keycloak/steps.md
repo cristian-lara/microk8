@@ -6,13 +6,13 @@ Pasos ordenados para desplegar Keycloak como IdP centralizado.
 
 ## Pre-requisitos
 
-- [ ] PostgreSQL `platform-db` Running en namespace `platform`.
-- [ ] Vault Running (para guardar admin password en el futuro).
-- [ ] NFS Squash configurado como "No mapping" en Synology.
+- [x] PostgreSQL `platform-db` Running en namespace `platform`.
+- [x] Vault Running (para guardar admin password en el futuro).
+- [x] NFS Squash configurado como "No mapping" en Synology.
 
 ---
 
-## Step 1: Crear base de datos Keycloak
+## Step 1: Crear base de datos Keycloak ✅
 
 **Comando** (en la VM):
 ```bash
@@ -32,11 +32,11 @@ microk8s kubectl exec -n platform platform-db-1 -c postgres -- \
   psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE keycloak TO keycloak;"
 ```
 
-**Criterio de éxito**: `\l` en psql muestra DB `keycloak`.
+**Criterio de éxito**: `\l` en psql muestra DB `keycloak`. ✅ Completado.
 
 ---
 
-## Step 2: Crear Secrets
+## Step 2: Crear Secrets ✅
 
 **Comando** (en la VM):
 ```bash
@@ -53,11 +53,11 @@ microk8s kubectl create secret generic keycloak-admin-secret \
   --dry-run=client -o yaml | microk8s kubectl apply -f -
 ```
 
-**Criterio de éxito**: Ambos secrets existen en namespace `platform`.
+**Criterio de éxito**: Ambos secrets existen en namespace `platform`. ✅ Completado.
 
 ---
 
-## Step 3: Aplicar Keycloak via Helm
+## Step 3: Aplicar Keycloak via Helm ✅
 
 **Archivos**: `docs/k8s/keycloak/values-keycloak-prod.yaml`, `docs/k8s/keycloak/apply-keycloak-platform.sh`
 
@@ -71,12 +71,18 @@ chmod +x docs/k8s/keycloak/apply-keycloak-platform.sh
 ```
 
 **Criterio de éxito**:
-- Pod `keycloak-0` en `Running` con `1/1`.
-- Logs sin errores de conexión a DB.
+- Pod `keycloak-keycloakx-0` en `Running` con `1/1`. ✅
+- Logs sin errores de conexión a DB. ✅
+- DB schema inicializado (124 changesets). ✅
+
+**Notas de implementación**:
+- Chart: `codecentric/keycloakx` (no Bitnami - restricciones de imagen desde agosto 2025)
+- Imagen: `quay.io/keycloak/keycloak:24.0.5`
+- Cache: `cache.stack: kubernetes` (valores válidos: tcp, udp, kubernetes, ec2, azure, google)
 
 ---
 
-## Step 4: Configurar Cloudflare Tunnel
+## Step 4: Configurar Cloudflare Tunnel ✅
 
 **Manual en Cloudflare Dashboard**:
 
@@ -91,7 +97,7 @@ chmod +x docs/k8s/keycloak/apply-keycloak-platform.sh
    - Dominio: `keycloak.cld-lf.com`
    - Políticas: IdP Google + allowlist estricta + **MFA obligatorio**.
 
-**Criterio de éxito**: `https://keycloak.cld-lf.com` muestra login de Keycloak.
+**Criterio de éxito**: `https://keycloak.cld-lf.com` muestra Admin UI de Keycloak. ✅ Completado.
 
 ---
 

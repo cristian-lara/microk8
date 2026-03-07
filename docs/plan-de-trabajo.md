@@ -99,11 +99,12 @@ Objetivo: levantar la plataforma **sin port forwarding**; cada app con su **subd
 
 ### 5b. Identity Provider centralizado (SSO)
 
-- [ ] **Keycloak** desplegado (IdP centralizado para todas las apps)
+- [x] **Keycloak** desplegado (IdP centralizado para todas las apps)
   - Archivos: `docs/k8s/keycloak/values-keycloak-prod.yaml`, `docs/k8s/keycloak/apply-keycloak-platform.sh`
   - Ejecutar: (1) Crear DB `keycloak` en platform-db. (2) `chmod +x docs/k8s/keycloak/apply-keycloak-platform.sh && ./docs/k8s/keycloak/apply-keycloak-platform.sh`
-  - Acceso: `https://keycloak.cld-lf.com`
-  - Post-deploy: Crear realm `cld-lf`, configurar IdP Google, crear clients para cada app.
+  - Acceso: `https://keycloak.cld-lf.com` (Cloudflare Tunnel → localhost:80 → Ingress → Keycloak)
+  - Chart: `codecentric/keycloakx` con imagen oficial `quay.io/keycloak/keycloak:24.0.5`
+  - **Pendiente post-deploy**: Crear realm `cld-lf`, configurar IdP Google, crear clients para cada app.
 - [ ] **Gitea integrado con Keycloak** (OIDC)
   - Archivos: Actualizar `docs/k8s/gitea/values-gitea-prod.yaml` con config OIDC
   - Ejecutar: Redeploy Gitea con nueva config; crear client `gitea` en Keycloak.
