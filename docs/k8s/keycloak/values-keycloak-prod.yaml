@@ -63,8 +63,10 @@ extraEnv: |
     value: "false"
   - name: KC_HTTP_RELATIVE_PATH
     value: "/"
-  - name: JAVA_OPTS_APPEND
-    value: "-Djgroups.dns.query=keycloak-headless.platform.svc.cluster.local"
+  - name: KC_CACHE
+    value: "local"
+  - name: KC_CACHE_STACK
+    value: ""
 
 # =============================================================================
 # SERVICE
@@ -159,6 +161,12 @@ startupProbe: |
 # =============================================================================
 postgresql:
   enabled: false
+
+# =============================================================================
+# CACHE (single replica - disable distributed cache)
+# =============================================================================
+cache:
+  stack: ""
 
 # =============================================================================
 # STATEFULSET
