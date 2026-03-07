@@ -66,10 +66,11 @@ extraEnv: |
         key: admin-password
 
 # =============================================================================
-# CACHE (CRITICAL: use "custom" to disable automatic jdbc-ping config)
+# CACHE (valid values: tcp, udp, kubernetes, ec2, azure, google)
+# For single replica in K8s, "kubernetes" works fine (no peers to discover)
 # =============================================================================
 cache:
-  stack: custom
+  stack: kubernetes
 
 # =============================================================================
 # PROXY

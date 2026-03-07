@@ -1,0 +1,161 @@
+---
+description: Reglas estrictas para crear y revisar Helm values.yaml - validación obligatoria antes de aplicar
+alwaysApply: true
+---
+
+# Helm Values – Validación Estricta Obligatoria
+
+**Problema:** Los values.yaml suelen tener errores que se descubren en prueba-error, generando muchas iteraciones y riesgo de omisiones.
+
+**Solución:** Proceso de validación en 4 fases ANTES de aplicar.
+
+---
+
+## Fase 1: Preparación (OBLIGATORIA)
+
+Antes de escribir cualquier `values.yaml`:
+
+1. **Obtener values por defecto del chart:**
+   ```bash
+   helm show values <repo>/<chart> > values-default.yaml
+   ```
+2. **Leer la documentación oficial** del chart (README, ArtifactHub, GitHub).
+3. **Identificar TODOS los parámetros requeridos** para producción.
+4. **Verificar versión del chart** y compatibilidad.
+
+---
+
+## Fase 2: Checklist de Producción (OBLIGATORIO)
+
+Todo `values.yaml` de producción DEBE incluir:
+
+### Imágenes
+- [ ] `image.tag` específico (nunca `latest`)
+- [ ] `image.pullPolicy: IfNotPresent` o `Always` según caso
+
+### Recursos
+- [ ] `resources.requests.cpu` y `memory` definidos
+- [ ] `resources.limits.cpu` y `memory` definidos
+- [ ] Valores realistas (no copiar defaults sin pensar)
+
+### Seguridad
+- [ ] `securityContext.runAsNonRoot: true`
+- [ ] `securityContext.readOnlyRootFilesystem: true` (si es posible)
+- [ ] `securityContext.allowPrivilegeEscalation: false`
+- [ ] Sin `privileged: true`
+
+### Probes
+- [ ] `livenessProbe` configurado
+- [ ] `readinessProbe` configurado
+- [ ] Timeouts y períodos razonables
+
+### Persistencia
+- [ ] `storageClass` correcto (`nfs-storage` en este cluster)
+- [ ] Tamaño de PVC apropiado
+- [ ] `accessModes` correctos
+
+### Red
+- [ ] Sin `NodePort` (usar `ClusterIP`)
+- [ ] URLs/callbacks con dominio real (nunca `localhost`)
+
+### Secretos
+- [ ] Ningún secreto en texto plano
+- [ ] Referencia a Vault o ExternalSecret
+
+---
+
+## Fase 3: Validación Técnica (OBLIGATORIA)
+
+Ejecutar SIEMPRE antes de `helm install/upgrade`:
+
+```bash
+# 1. Validar sintaxis YAML
+yamllint values-<app>.yaml
+
+# 2. Lint del chart con los values
+helm lint <chart> -f values-<app>.yaml
+
+# 3. Template render (verificar output generado)
+helm template <release> <chart> -f values-<app>.yaml --debug > /tmp/rendered.yaml
+
+# 4. Dry-run contra el cluster
+helm install <release> <chart> -f values-<app>.yaml --dry-run --debug
+
+# 5. Revisar el YAML renderizado
+kubectl apply -f /tmp/rendered.yaml --dry-run=client
+```
+
+**Si cualquier paso falla → NO aplicar. Corregir primero.**
+
+---
+
+## Fase 4: Revisión Cruzada
+
+Antes de aplicar, verificar manualmente en el YAML renderizado:
+
+1. **Nombres de recursos** correctos y consistentes.
+2. **Namespace** correcto (`platform` vs apps).
+3. **Labels y selectors** coinciden.
+4. **ConfigMaps/Secrets** referenciados existen.
+5. **PVCs** apuntan al storageClass correcto.
+6. **Ingress** tiene host y TLS configurados.
+7. **Service** tiene puertos correctos.
+
+---
+
+## Errores Comunes a Verificar
+
+| Error | Qué revisar |
+|-------|-------------|
+| Pod en CrashLoopBackOff | Probes muy agresivos, recursos insuficientes |
+| ImagePullBackOff | Tag incorrecto, registry privado sin secret |
+| Pending PVC | storageClass inexistente o sin espacio |
+| Service sin endpoints | Selector no coincide con labels del pod |
+| Ingress 404 | Service name/port incorrecto |
+| Secrets no encontrados | Nombre del secret mal escrito |
+
+---
+
+## CRÍTICO: Protocolo ante Errores
+
+**Si el deploy falla o hay CUALQUIER error → OBLIGATORIO ejecutar validación estricta completa.**
+
+### Pasos obligatorios ante error:
+
+1. **PARAR.** No intentar "arreglar rápido" cambiando valores al azar.
+2. **Capturar el error completo:**
+   ```bash
+   kubectl describe pod <pod> -n <ns>
+   kubectl logs <pod> -n <ns> --previous
+   kubectl get events -n <ns> --sort-by='.lastTimestamp'
+   ```
+3. **Ejecutar validación estricta completa (Fases 1-4):**
+   - Re-leer documentación del chart para el parámetro que falla.
+   - `helm template --debug` y buscar el recurso que causa el error.
+   - Comparar con values por defecto (`helm show values`).
+4. **Identificar causa raíz** antes de modificar nada.
+5. **Corregir con fundamento**, no por prueba-error.
+6. **Re-ejecutar validación completa** antes de re-aplicar.
+
+### Prohibido ante errores:
+- ❌ Cambiar valores "a ver si funciona"
+- ❌ Copiar soluciones de internet sin entenderlas
+- ❌ Iterar sin analizar logs/eventos
+- ❌ Omitir dry-run "porque ya lo hice antes"
+
+**Cada intento fallido sin análisis = pérdida de tiempo y riesgo de omitir la causa real.**
+
+---
+
+## Regla para Agentes IA
+
+Cuando generes un `values.yaml`:
+
+1. **NO copies valores por defecto sin entenderlos.**
+2. **Verifica cada campo** contra la documentación del chart.
+3. **Ejecuta las 4 fases** antes de decir "listo para aplicar".
+4. **Si hay error → EJECUTAR PROTOCOLO DE ERROR** (sección anterior).
+5. **Documenta** decisiones no obvias con comentarios en el YAML.
+
+**Prohibido:** Generar values "a ciegas" esperando que funcionen.
+**Prohibido:** Iterar sin ejecutar validación estricta ante cada error.

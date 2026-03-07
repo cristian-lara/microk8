@@ -46,9 +46,37 @@ El auditor comprueba cada ítem. Cualquier fallo debe corregirse y re-auditar an
 
 - [ ] Namespace correcto: `platform` solo para componentes de plataforma; apps de negocio en otro namespace.
 
-## 9. Helm values (si aplica)
+## 9. Helm values – Validación Estricta (si aplica)
 
-- [ ] `values.yaml` sin `:latest`, con recursos y probes; sin credenciales en claro; sin URLs de prueba (localhost) en valores de producción.
+### 9.1 Preparación (ANTES de crear el values)
+- [ ] Se ejecutó `helm show values <chart>` para conocer los valores por defecto.
+- [ ] Se leyó la documentación oficial del chart (README, ArtifactHub).
+- [ ] Se identificaron TODOS los parámetros requeridos para producción.
+
+### 9.2 Contenido del values.yaml
+- [ ] `image.tag` específico (nunca `:latest`).
+- [ ] `resources.requests` y `resources.limits` definidos y realistas.
+- [ ] `securityContext` de producción (`runAsNonRoot`, `allowPrivilegeEscalation: false`).
+- [ ] `livenessProbe` y `readinessProbe` configurados.
+- [ ] `storageClass: nfs-storage` si hay persistencia.
+- [ ] Sin credenciales en claro; referencia a Vault/ExternalSecret.
+- [ ] URLs/callbacks con dominio real (`*.cld-lf.com`), nunca localhost.
+
+### 9.3 Validación técnica (OBLIGATORIA antes de aplicar)
+- [ ] `helm lint <chart> -f values.yaml` → sin errores.
+- [ ] `helm template <release> <chart> -f values.yaml --debug` → se revisó el YAML renderizado.
+- [ ] `helm install ... --dry-run --debug` → sin errores de validación.
+- [ ] En el YAML renderizado: namespace, labels, selectors, PVCs y Services son correctos.
+
+**Si cualquier validación falla → NO aprobar. Corregir y re-validar.**
+
+### 9.4 Protocolo ante errores (CRÍTICO)
+- [ ] Si hubo error en deploy anterior: se ejecutó el **protocolo de error completo** (ver `.cursor/rules/helm-values-strict.mdc`).
+- [ ] Se capturaron logs y eventos antes de modificar valores.
+- [ ] Se identificó la **causa raíz** (no se cambió "a ver si funciona").
+- [ ] Se re-ejecutó validación completa (Fases 1-4) tras cada corrección.
+
+**Prohibido:** Aprobar si se detecta que se iteró sin análisis (prueba-error ciego).
 
 ---
 
